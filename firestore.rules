@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Club code is the secret. Anyone signed in who knows the code can use the club.
+    match /clubs/{clubId} {
+      allow read, create: if signedIn();
+      allow update: if signedIn();
+
+      match /{document=**} {
+        allow read, write: if signedIn();
+      }
+    }
+  }
+}
