@@ -1,6 +1,6 @@
 import {useState} from 'react'
 import {type ClubState, type Genre, GENRES} from '../types'
-import {Chip} from './ui'
+import {Card, CardTitle, Chip, Subhead} from './ui'
 
 export function GenreVotes({
     uid,
@@ -18,6 +18,7 @@ export function GenreVotes({
     const [mine, setMine] = useState<Genre[]>(live)
     const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
     const shown = edited ? mine : live
+    const clubPicks = members.filter((member) => (votes[member.id] ?? []).length > 0)
 
     async function toggle(genre: Genre) {
         const current = edited ? mine : live
@@ -36,13 +37,9 @@ export function GenreVotes({
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <Card className="flex flex-col gap-4">
+            <CardTitle>Favorite genres</CardTitle>
             <div>
-                <p className="mb-1 font-semibold">Genres you want this round</p>
-                <p className="mb-2 text-sm text-ink/70">
-                    Last round’s picks stay selected until this round is locked. Leave them if they still
-                    look right, or tap to change. You only edit your own; everyone can see them.
-                </p>
                 <div className="flex flex-wrap gap-2">
                     {GENRES.map((genre) => (
                         <Chip
@@ -54,34 +51,35 @@ export function GenreVotes({
                         </Chip>
                     ))}
                 </div>
-                <p className="mt-2 text-xs text-ink/60">
-                    {status === 'saving' && 'Saving…'}
-                    {status === 'saved' && 'Saved. Other members can see this now.'}
-                    {status === 'idle' &&
-                        shown.length > 0 &&
-                        'Carried over from last round. No need to tap unless you want to change.'}
-                    {status === 'idle' && shown.length === 0 && 'No genres selected yet.'}
-                </p>
+                {status !== 'idle' ? (
+                    <p className="mt-2 text-xs text-ink/60">
+                        {status === 'saving' && 'Saving…'}
+                        {status === 'saved' && 'Saved.'}
+                    </p>
+                ) : null}
             </div>
-            <div>
-                <p className="mb-2 font-semibold">What the club wants</p>
-                <ul className="flex flex-col gap-1.5 text-sm">
-                    {members.map((member) => {
-                        const genres = votes[member.id] ?? []
-                        return (
-                            <li key={member.id} className="rounded-xl bg-cream px-3 py-2">
-                                <span className="font-semibold">
-                                    {member.displayName}
-                                    {member.id === uid ? ' (you)' : ''}
-                                </span>
-                                <span className="text-ink/70">
-                                    {genres.length ? ` — ${genres.join(', ')}` : ' — no genres yet'}
-                                </span>
-                            </li>
-                        )
-                    })}
-                </ul>
-            </div>
-        </div>
+            {clubPicks.length > 0 ? (
+                <div>
+                    <Subhead>What the club wants</Subhead>
+                    <ul className="flex flex-col gap-1.5 text-sm">
+                        {clubPicks.map((member) => {
+                            const genres = votes[member.id] ?? []
+                            return (
+                                <li
+                                    key={member.id}
+                                    className="rounded-xl border-l-2 border-gold bg-cream px-3 py-2"
+                                >
+                                    <span className="font-semibold">
+                                        {member.displayName}
+                                        {member.id === uid ? ' (you)' : ''}
+                                    </span>
+                                    <span className="text-ink/70"> — {genres.join(', ')}</span>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                </div>
+            ) : null}
+        </Card>
     )
 }

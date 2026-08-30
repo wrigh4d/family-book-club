@@ -1,7 +1,8 @@
 import {useState} from 'react'
 import {currentHistoryBook, rateCurrentBook, resolveCurrentBook, savePersonalNote} from '../lib/store'
+import {useBookFacts} from '../lib/useBookFacts'
 import type {ClubState} from '../types'
-import {Button, Cover, TextArea} from './ui'
+import {Button, Card, CardTitle, Cover, Subhead, TextArea} from './ui'
 
 export function CurrentBookCard({
     code,
@@ -20,28 +21,35 @@ export function CurrentBookCard({
     const remoteNote = history?.notes?.[uid] ?? ''
     const [draft, setDraft] = useState<string | null>(null)
     const note = draft ?? remoteNote
+    const facts = useBookFacts(current)
 
     if (!current) {
         return (
-            <div className="rounded-xl bg-cream p-3">
-                <p className="text-xs uppercase tracking-wide text-gold">Current book</p>
-                <p className="mt-1 text-sm text-ink/70">None yet. The owner will pick one after presenting.</p>
-            </div>
+            <Card className="flex flex-col gap-4">
+                <CardTitle>Current book</CardTitle>
+                <p className="text-sm text-ink/70">None yet. The owner will pick one after presenting.</p>
+            </Card>
         )
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <Card className="flex flex-col gap-4">
+            <CardTitle>Current book</CardTitle>
             <div className="flex gap-3">
-                <Cover src={current.coverUrl} title={current.title} loading="eager"/>
+                <Cover
+                    src={current.coverUrl}
+                    title={current.title}
+                    loading="eager"
+                    className="h-36 w-24 ring-1 ring-gold/40"
+                />
                 <div>
-                    <p className="text-xs uppercase tracking-wide text-gold">Current book</p>
                     <p className="font-display text-xl">{current.title}</p>
                     <p className="text-sm text-ink/70">{current.author}</p>
+                    {facts ? <p className="mt-1 text-sm text-ink/60">{facts}</p> : null}
                 </div>
             </div>
             <div>
-                <p className="mb-2 text-sm font-semibold">Your rating</p>
+                <Subhead>Your rating</Subhead>
                 <div className="flex gap-2" role="group" aria-label="Rate the current book">
                     {[1, 2, 3, 4, 5].map((stars) => (
                         <button
@@ -62,22 +70,23 @@ export function CurrentBookCard({
                 </div>
             </div>
             <div>
-                <p className="mb-2 text-sm font-semibold">Your note</p>
+                <Subhead>Your note</Subhead>
                 <TextArea
                     value={note}
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder="A thought for the meeting — optional"
                     aria-label="Your note on the current book"
                 />
-                <Button
-                    type="button"
-                    variant="ghost"
-                    className="mt-2"
-                    onClick={() => savePersonalNote(code, state, uid, note).catch(onError)}
-                >
-                    Save note
-                </Button>
+                <div className="mt-2 flex justify-end">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => savePersonalNote(code, state, uid, note).catch(onError)}
+                    >
+                        Save note
+                    </Button>
+                </div>
             </div>
-        </div>
+        </Card>
     )
 }

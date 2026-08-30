@@ -38,7 +38,16 @@ describe('parseCurrentBook', () => {
             author: 'Herbert',
             coverUrl: null,
             genre: 'Literary',
+            firstPublishYear: null,
+            pageCount: null,
         })
+        expect(
+            parseCurrentBook({
+                title: 'Dune',
+                firstPublishYear: 1965,
+                pageCount: 412,
+            }),
+        ).toMatchObject({firstPublishYear: 1965, pageCount: 412})
         expect(parseCurrentBook({author: 'No title'})).toBeNull()
     })
 })

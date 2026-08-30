@@ -16,11 +16,89 @@ export function Brand() {
     )
 }
 
+export function ClubHeader({name, action}: {name: string; action?: ReactNode}) {
+    return (
+        <header className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                    <Brand/>
+                    <h1 className="font-display text-3xl">{name}</h1>
+                </div>
+                {action ? <div className="flex shrink-0 flex-col items-end gap-2">{action}</div> : null}
+            </div>
+            <AccentRule/>
+        </header>
+    )
+}
+
 export function Card({children, className = ''}: { children: ReactNode; className?: string }) {
     return (
         <section className={`rounded-2xl border border-rule bg-paper p-4 shadow-sm ${className}`}>
             {children}
         </section>
+    )
+}
+
+export function AccentRule({className = ''}: {className?: string}) {
+    return (
+        <span
+            aria-hidden="true"
+            className={`block h-0.5 w-full rounded-full bg-gradient-to-r from-gold via-gold/70 to-gold/15 ${className}`}
+        />
+    )
+}
+
+export function CardTitle({children}: {children: ReactNode}) {
+    return (
+        <div>
+            <h2 className="font-display text-2xl">{children}</h2>
+            <AccentRule className="mt-2"/>
+        </div>
+    )
+}
+
+export function Subhead({children}: {children: ReactNode}) {
+    return (
+        <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+            <span aria-hidden="true" className="h-3.5 w-0.5 rounded-full bg-gold"/>
+            {children}
+        </p>
+    )
+}
+
+export function Accordion({
+    title,
+    children,
+}: {
+    title: string
+    children: ReactNode
+}) {
+    return (
+        <Card>
+            <details className="group">
+                <summary className="flex list-none flex-col outline-none select-none marker:content-none focus-visible:ring-2 focus-visible:ring-burgundy [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center justify-between gap-3 font-display text-2xl">
+                        {title}
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            className="h-5 w-5 shrink-0 text-gold transition-transform duration-150 group-open:rotate-180"
+                        >
+                            <path
+                                d="M5 8l5 5 5-5"
+                                stroke="currentColor"
+                                strokeWidth="1.75"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    </span>
+                    <AccentRule className="mt-2"/>
+                </summary>
+                <div className="mt-4 flex flex-col gap-5">{children}</div>
+            </details>
+        </Card>
     )
 }
 

@@ -6,7 +6,11 @@ export type BookSearchHit = {
     author: string
     coverUrl: string | null
     genre: Genre
+    firstPublishYear: number | null
+    pageCount: number | null
 }
+
+const SEARCH_FIELDS = 'key,title,author_name,cover_i,subject,first_publish_year,number_of_pages_median'
 
 const SUBJECT_BY_GENRE: Record<Genre, string> = {
     Fantasy: 'fantasy',
@@ -33,6 +37,14 @@ type OpenLibraryDoc = {
     author_name?: string[]
     cover_i?: number
     subject?: string[]
+    first_publish_year?: number
+    number_of_pages_median?: number
+}
+
+function asPositiveInt(value: unknown): number | null {
+    const n = Number(value)
+    if (!Number.isFinite(n) || n <= 0) return null
+    return Math.round(n)
 }
 
 const GENRE_NEEDLES: Array<{ genre: Genre; needles: string[] }> = [
@@ -71,6 +83,8 @@ function hitsFromDocs(docs: OpenLibraryDoc[] | undefined): BookSearchHit[] {
             author: doc.author_name?.[0] ?? 'Unknown author',
             coverUrl: coverUrlFromId(doc.cover_i),
             genre: genreFromSubjects(doc.subject),
+            firstPublishYear: asPositiveInt(doc.first_publish_year),
+            pageCount: asPositiveInt(doc.number_of_pages_median),
         }))
 }
 
@@ -84,14 +98,14 @@ export async function searchBooks(query: string): Promise<BookSearchHit[]> {
     const q = query.trim()
     if (q.length < 2) return []
 
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=8&fields=key,title,author_name,cover_i,subject`
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=8&fields=${SEARCH_FIELDS}`
     const data = await fetchJson<OpenLibrarySearch>(url, 'Could not search Open Library.')
     return hitsFromDocs(data.docs)
 }
 
 export async function popularBooksOverall(): Promise<BookSearchHit[]> {
     const url =
-        'https://openlibrary.org/search.json?q=language:eng&sort=want_to_read&limit=8&fields=key,title,author_name,cover_i,subject'
+        `https://openlibrary.org/search.json?q=language:eng&sort=want_to_read&limit=8&fields=${SEARCH_FIELDS}`
     const data = await fetchJson<OpenLibrarySearch>(url, 'Could not load popular books.')
     return hitsFromDocs(data.docs)
 }
@@ -168,6 +182,8 @@ export async function popularBookInGenre(
                 author: work.authors?.[0]?.name ?? 'Unknown author',
                 coverUrl: coverUrlFromId(work.cover_id),
                 genre,
+                firstPublishYear: null,
+                pageCount: null,
             }))
         const match = firstUnused(hits, excluded, disliked)
         if (match) return match
@@ -176,18 +192,13 @@ export async function popularBookInGenre(
     }
 
     const data = await fetchJson<OpenLibrarySearch>(
-        `https://openlibrary.org/search.json?subject=${encodeURIComponent(subject)}&limit=40`,
+        `https://openlibrary.org/search.json?subject=${encodeURIComponent(subject)}&limit=40&fields=${SEARCH_FIELDS}`,
         'Could not load a genre recommendation.',
     )
-    const hits = (data.docs ?? [])
-        .filter((doc) => doc.title && doc.key)
-        .map((doc) => ({
-            olid: doc.key as string,
-            title: doc.title as string,
-            author: doc.author_name?.[0] ?? 'Unknown author',
-            coverUrl: coverUrlFromId(doc.cover_i),
-            genre: genreFromSubjects(doc.subject) === 'Literary' ? genre : genreFromSubjects(doc.subject),
-        }))
+    const hits = hitsFromDocs(data.docs).map((hit) => ({
+        ...hit,
+        genre: hit.genre === 'Literary' ? genre : hit.genre,
+    }))
     return firstUnused(hits, excluded, disliked)
 }
 
@@ -209,6 +220,24 @@ export async function fetchWorkSubjects(olid: string): Promise<string[]> {
     }
 }
 
+export async function fetchWorkFacts(olid: string): Promise<{
+    firstPublishYear: number | null
+    pageCount: number | null
+} | null> {
+    const key = olid.startsWith('/') ? olid : `/works/${olid}`
+    try {
+        const data = await fetchJson<OpenLibrarySearch>(
+            `https://openlibrary.org/search.json?q=${encodeURIComponent(`key:${key}`)}&limit=1&fields=${SEARCH_FIELDS}`,
+            'Could not load book details.',
+        )
+        const hit = hitsFromDocs(data.docs)[0]
+        if (!hit) return null
+        return {firstPublishYear: hit.firstPublishYear, pageCount: hit.pageCount}
+    } catch {
+        return null
+    }
+}
+
 function subjectQuery(tag: string): string {
     const cleaned = tag.trim().toLowerCase().replaceAll(/"/g, '')
     return `subject:"${cleaned}"`
@@ -224,7 +253,7 @@ export async function bookMatchingTags(
     if (!include.length) return null
     const exclude = avoided.slice(0, 4).map((tag) => `NOT ${subjectQuery(tag)}`)
     const q = `(${include.join(' OR ')}) ${exclude.join(' ')}`.trim()
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&sort=rating&limit=24&fields=key,title,author_name,cover_i,subject`
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&sort=rating&limit=24&fields=${SEARCH_FIELDS}`
     const data = await fetchJson<OpenLibrarySearch>(
         url,
         'Could not load a ratings-based recommendation.',

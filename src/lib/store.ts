@@ -3,6 +3,7 @@ import {
     arrayRemove,
     arrayUnion,
     collection,
+    deleteDoc,
     doc,
     getDoc,
     getDocs,
@@ -14,6 +15,7 @@ import {
     writeBatch,
 } from 'firebase/firestore'
 import {asGenre, type AppRecommendation, type Club, type ClubState, type CurrentBook, type Genre, type HistoryBook, type Member, type Nomination, type Round, type Rule, type SuggestionSnapshot} from '../types'
+import {assertCanBeNextBook, assertCanJoinShortlist, findMatchingClubBook, staleShortlist} from './bookStatus'
 import {asClub, asHistory, asMember, asNomination, asRound, asRule, parseGenreList} from './clubParse'
 import {randomClubCode} from './codes'
 import {db} from './firebase'
@@ -56,6 +58,8 @@ export function resolveCurrentBook(state: ClubState): CurrentBook | null {
         author: nom.author,
         coverUrl: nom.coverUrl,
         genre: nom.genre,
+        firstPublishYear: nom.firstPublishYear,
+        pageCount: nom.pageCount,
     }
 }
 
@@ -325,15 +329,27 @@ export async function addNomination(
         author: string
         coverUrl: string | null
         genre: Genre
+        firstPublishYear?: number | null
+        pageCount?: number | null
     },
+    state: ClubState,
 ): Promise<string> {
+    assertCanJoinShortlist(state, book)
+    await pruneShortlist(code, state)
+    const listed = findMatchingClubBook(book, state.nominations)
+    if (listed) return listed.id
     const existing = (await getDocs(collection(clubRef(code), 'shortlist'))).docs.find(
         (row) => row.data().olid === book.olid,
     )
     if (existing) return existing.id
     const ref = await addDoc(collection(clubRef(code), 'shortlist'), {
-        ...book,
+        olid: book.olid,
+        title: book.title,
+        author: book.author,
+        coverUrl: book.coverUrl ?? null,
         genre: asGenre(book.genre),
+        firstPublishYear: book.firstPublishYear ?? null,
+        pageCount: book.pageCount ?? null,
         nominatedBy: uid,
         nominatedByName: displayName,
         alreadyReadBy: [],
@@ -351,6 +367,20 @@ export async function toggleAlreadyRead(
     await updateDoc(doc(clubRef(code), 'shortlist', nominationId), {
         alreadyReadBy: already ? arrayRemove(uid) : arrayUnion(uid),
     })
+}
+
+export async function removeFromShortlist(code: string, nominationId: string): Promise<void> {
+    await deleteDoc(doc(clubRef(code), 'shortlist', nominationId))
+}
+
+export async function pruneShortlist(code: string, state: ClubState): Promise<void> {
+    const stale = staleShortlist(state)
+    if (stale.length === 0) return
+    const batch = writeBatch(db)
+    for (const book of stale) {
+        batch.delete(doc(clubRef(code), 'shortlist', book.id))
+    }
+    await batch.commit()
 }
 
 function snapshotFromState(
@@ -414,6 +444,8 @@ function toCurrentBook(book: CurrentBook): CurrentBook {
         author: book.author || '',
         coverUrl: book.coverUrl ?? null,
         genre: asGenre(book.genre),
+        firstPublishYear: book.firstPublishYear ?? null,
+        pageCount: book.pageCount ?? null,
     }
 }
 
@@ -424,6 +456,9 @@ export async function setStartingBook(
     book: CurrentBook,
 ): Promise<void> {
     assertOwner(state, uid)
+    assertCanBeNextBook(state, book)
+    const listed = findMatchingClubBook(book, state.nominations)
+    if (listed) await deleteDoc(doc(clubRef(code), 'shortlist', listed.id))
     await updateDoc(clubRef(code), {
         currentBook: toCurrentBook(book),
         currentBookId: book.olid || null,
@@ -438,15 +473,18 @@ export async function pickNextBook(
 ): Promise<void> {
     assertOwner(state, uid)
     if (!state.round) throw new Error('No active round.')
+    if (book) assertCanBeNextBook(state, book)
+    await pruneShortlist(code, state)
     const shown = [
         state.round.genreRecommendation,
         state.round.ratingsRecommendation,
         state.round.suggestion?.genreRecommendation,
         state.round.suggestion?.ratingsRecommendation,
     ].filter((rec): rec is AppRecommendation => Boolean(rec?.olid))
-    const ignored = shown.filter(
-        (rec) => !state.nominations.some((item) => isSameRecommendedBook(rec, [item])),
-    )
+    const ignored = shown.filter((rec) => {
+        if (book && isSameRecommendedBook(rec, [book])) return false
+        return !state.nominations.some((item) => isSameRecommendedBook(rec, [item]))
+    })
     const dislikedRecs = [...state.club.dislikedRecs]
     for (const rec of ignored) {
         if (!isSameRecommendedBook(rec, dislikedRecs)) {
@@ -455,8 +493,8 @@ export async function pickNextBook(
     }
 
     const batch = writeBatch(db)
-    if (book?.olid) {
-        const listed = state.nominations.find((row) => row.olid === book.olid)
+    if (book) {
+        const listed = findMatchingClubBook(book, state.nominations)
         if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
     }
     const roundRef = doc(collection(clubRef(code), 'rounds'))

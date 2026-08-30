@@ -33,6 +33,8 @@ export type CurrentBook = {
     author: string
     coverUrl: string | null
     genre: Genre
+    firstPublishYear: number | null
+    pageCount: number | null
 }
 
 export type Member = {
@@ -57,6 +59,8 @@ export type Nomination = {
     author: string
     coverUrl: string | null
     genre: Genre
+    firstPublishYear: number | null
+    pageCount: number | null
     nominatedBy: string
     nominatedByName: string
     alreadyReadBy: string[]
@@ -73,6 +77,8 @@ export type AppRecommendation = {
     genre: string
     why: string
     source: RecSource
+    firstPublishYear?: number | null
+    pageCount?: number | null
 }
 
 export function recToCurrentBook(rec: AppRecommendation): CurrentBook {
@@ -82,6 +88,8 @@ export function recToCurrentBook(rec: AppRecommendation): CurrentBook {
         author: rec.author,
         coverUrl: rec.coverUrl,
         genre: asGenre(rec.genre),
+        firstPublishYear: rec.firstPublishYear ?? null,
+        pageCount: rec.pageCount ?? null,
     }
 }
 

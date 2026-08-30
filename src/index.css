@@ -40,26 +40,16 @@ summary {
     cursor: pointer;
 }
 
+summary {
+    list-style: none;
+}
+
+summary::-webkit-details-marker {
+    display: none;
+}
+
 button:disabled {
     cursor: not-allowed;
-}
-
-@keyframes note-scroll {
-    from {
-        transform: translateY(0);
-    }
-    to {
-        transform: translateY(-50%);
-    }
-}
-
-.note-ticker {
-    overflow: hidden;
-    max-height: 9rem;
-}
-
-.note-ticker-track {
-    animation: note-scroll 28s linear infinite;
 }
 
 @keyframes shortlist-scroll {
@@ -81,9 +71,14 @@ button:disabled {
     animation: shortlist-scroll 40s linear infinite;
 }
 
+.shortlist-ticker-track.is-paused {
+    animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .note-ticker-track,
     .shortlist-ticker-track {
         animation: none;
     }
 }
+
+

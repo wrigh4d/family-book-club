@@ -1,35 +1,45 @@
-import {type AppRecommendation, type ClubState, type CurrentBook} from '../types'
+import {availableShortlist, clubBookStatus, clubBookStatusLabel} from '../lib/bookStatus'
 import {useBookSearch} from '../lib/useBookSearch'
+import {type AppRecommendation, type ClubState, type CurrentBook, recToCurrentBook} from '../types'
 import {BookHitRow, BookSearchForm} from './bookSearch'
-import {Button, Cover, ErrorBanner} from './ui'
+import {Button, Cover, ErrorBanner, TextButton} from './ui'
 
 export function ConcludePicker({
-    shortlist,
+    state,
     recs,
     onAddRec,
     onPick,
+    onRemove,
 }: {
-    shortlist: ClubState['nominations']
+    state: ClubState
     recs: {genre: AppRecommendation | null; ratings: AppRecommendation | null}
     onAddRec: (rec: AppRecommendation) => void
     onPick: (book: CurrentBook) => void
+    onRemove: (id: string) => void
 }) {
+    const shortlist = availableShortlist(state)
     return (
         <div className="flex flex-col gap-4">
             {recs.genre ? (
                 <ConcludeRec
                     label="Most popular in this round’s genre"
                     rec={recs.genre}
-                    onShortlist={shortlist.some((book) => book.olid === recs.genre?.olid)}
+                    blocked={clubBookStatusLabel(clubBookStatus(state, recs.genre))}
+                    listedId={shortlist.find((book) => book.olid === recs.genre?.olid)?.id}
                     onAdd={() => onAddRec(recs.genre!)}
+                    onChoose={() => onPick(recToCurrentBook(recs.genre!))}
+                    onRemove={onRemove}
                 />
             ) : null}
             {recs.ratings ? (
                 <ConcludeRec
                     label="From past club ratings"
                     rec={recs.ratings}
-                    onShortlist={shortlist.some((book) => book.olid === recs.ratings?.olid)}
+                    blocked={clubBookStatusLabel(clubBookStatus(state, recs.ratings))}
+                    listedId={shortlist.find((book) => book.olid === recs.ratings?.olid)?.id}
                     onAdd={() => onAddRec(recs.ratings!)}
+                    onChoose={() => onPick(recToCurrentBook(recs.ratings!))}
+                    onRemove={onRemove}
                 />
             ) : null}
             <p className="font-semibold">Pick the next book from the shortlist</p>
@@ -40,28 +50,34 @@ export function ConcludePicker({
             ) : (
                 <ul className="flex flex-col gap-2">
                     {shortlist.map((book) => (
-                        <li key={book.id}>
-                            <button
-                                type="button"
-                                className="flex w-full items-center gap-3 rounded-xl bg-cream p-2 text-left transition hover:bg-burgundy/10"
-                                onClick={() => onPick(book)}
-                            >
-                                <Cover src={book.coverUrl} title={book.title} className="h-16 w-11"/>
-                                <span>
-                                    <span className="block font-semibold">{book.title}</span>
-                                    <span className="text-sm text-ink/70">{book.author}</span>
-                                </span>
-                            </button>
+                        <li key={book.id} className="flex items-center gap-2 rounded-xl bg-cream p-2">
+                            <Cover src={book.coverUrl} title={book.title} className="h-16 w-11"/>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-semibold">{book.title}</p>
+                                <p className="text-sm text-ink/70">{book.author}</p>
+                            </div>
+                            <div className="flex shrink-0 flex-col gap-1">
+                                <Button type="button" className="py-2" onClick={() => onPick(book)}>
+                                    Choose
+                                </Button>
+                                <TextButton onClick={() => onRemove(book.id)}>Remove</TextButton>
+                            </div>
                         </li>
                     ))}
                 </ul>
             )}
-            <ConcludeSearch onPick={onPick}/>
+            <ConcludeSearch state={state} onPick={onPick}/>
         </div>
     )
 }
 
-function ConcludeSearch({onPick}: {onPick: (book: CurrentBook) => void}) {
+function ConcludeSearch({
+    state,
+    onPick,
+}: {
+    state: ClubState
+    onPick: (book: CurrentBook) => void
+}) {
     const {query, setQuery, hits, searching, searchError, runSearch} = useBookSearch()
 
     return (
@@ -76,17 +92,20 @@ function ConcludeSearch({onPick}: {onPick: (book: CurrentBook) => void}) {
             />
             <ErrorBanner message={searchError}/>
             <ul className="flex flex-col gap-2">
-                {hits.map((hit) => (
-                    <BookHitRow
-                        key={hit.olid}
-                        hit={hit}
-                        action={
-                            <Button type="button" onClick={() => onPick(hit)}>
-                                Choose
-                            </Button>
-                        }
-                    />
-                ))}
+                {hits.map((hit) => {
+                    const blocked = clubBookStatusLabel(clubBookStatus(state, hit))
+                    return (
+                        <BookHitRow
+                            key={hit.olid}
+                            hit={hit}
+                            action={
+                                <Button type="button" disabled={Boolean(blocked)} onClick={() => onPick(hit)}>
+                                    {blocked ?? 'Choose'}
+                                </Button>
+                            }
+                        />
+                    )
+                })}
             </ul>
         </div>
     )
@@ -95,13 +114,19 @@ function ConcludeSearch({onPick}: {onPick: (book: CurrentBook) => void}) {
 function ConcludeRec({
     label,
     rec,
-    onShortlist,
+    blocked,
+    listedId,
     onAdd,
+    onChoose,
+    onRemove,
 }: {
     label: string
     rec: AppRecommendation
-    onShortlist: boolean
+    blocked: string | null
+    listedId?: string
     onAdd: () => void
+    onChoose: () => void
+    onRemove: (id: string) => void
 }) {
     return (
         <div className="rounded-xl border border-gold/40 bg-cream p-3">
@@ -112,15 +137,25 @@ function ConcludeRec({
                     <p className="font-display text-xl">{rec.title}</p>
                     <p className="text-sm text-ink/70">{rec.author}</p>
                     <p className="mt-1 text-sm text-ink/70">{rec.why}</p>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        className="mt-2 py-2"
-                        disabled={onShortlist}
-                        onClick={onAdd}
-                    >
-                        {onShortlist ? 'On the shortlist' : 'Add to shortlist'}
-                    </Button>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        <Button type="button" className="py-2" disabled={Boolean(blocked)} onClick={onChoose}>
+                            {blocked ?? 'Choose'}
+                        </Button>
+                        {blocked ? null : listedId ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className="py-2"
+                                onClick={() => onRemove(listedId)}
+                            >
+                                Remove from shortlist
+                            </Button>
+                        ) : (
+                            <Button type="button" variant="ghost" className="py-2" onClick={onAdd}>
+                                Add to shortlist
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

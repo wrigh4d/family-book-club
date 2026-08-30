@@ -16,6 +16,8 @@ function nom(partial: Partial<Nomination> & Pick<Nomination, 'id' | 'genre'>): N
         title: partial.title ?? partial.id,
         author: 'Author',
         coverUrl: null,
+        firstPublishYear: null,
+        pageCount: null,
         nominatedBy: 'u1',
         nominatedByName: 'Nick',
         alreadyReadBy: [],

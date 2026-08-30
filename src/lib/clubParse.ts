@@ -9,6 +9,12 @@ function asNumber(value: unknown, fallback = 0): number {
     return Number.isFinite(n) ? n : fallback
 }
 
+function asPositiveInt(value: unknown): number | null {
+    const n = Number(value)
+    if (!Number.isFinite(n) || n <= 0) return null
+    return Math.round(n)
+}
+
 export function parseDislikedRecs(value: unknown): Club['dislikedRecs'] {
     if (!Array.isArray(value)) return []
     const recs: Club['dislikedRecs'] = []
@@ -36,6 +42,8 @@ export function parseCurrentBook(value: unknown): CurrentBook | null {
         author: asString(book.author),
         coverUrl: book.coverUrl ? String(book.coverUrl) : null,
         genre: asGenre(book.genre),
+        firstPublishYear: asPositiveInt(book.firstPublishYear),
+        pageCount: asPositiveInt(book.pageCount),
     }
 }
 
@@ -52,6 +60,8 @@ export function parseAppRec(value: unknown): AppRecommendation | null {
         genre: asString(rec.genre, 'Literary'),
         why: asString(rec.why),
         source,
+        firstPublishYear: asPositiveInt(rec.firstPublishYear),
+        pageCount: asPositiveInt(rec.pageCount),
     }
 }
 
@@ -104,6 +114,8 @@ export function asNomination(id: string, data: Record<string, unknown>): Nominat
         author: asString(data.author, 'Unknown'),
         coverUrl: data.coverUrl ? String(data.coverUrl) : null,
         genre: asGenre(data.genre),
+        firstPublishYear: asPositiveInt(data.firstPublishYear),
+        pageCount: asPositiveInt(data.pageCount),
         nominatedBy: asString(data.nominatedBy),
         nominatedByName: asString(data.nominatedByName, 'Someone'),
         alreadyReadBy: Array.isArray(data.alreadyReadBy) ? data.alreadyReadBy.map(String) : [],
