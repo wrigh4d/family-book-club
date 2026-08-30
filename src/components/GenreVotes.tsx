@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {type ClubState, type Genre, GENRES} from '../types'
 import {Card, CardTitle, Chip, Subhead} from './ui'
 
@@ -19,21 +19,43 @@ export function GenreVotes({
     const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
     const shown = edited ? mine : live
     const clubPicks = members.filter((member) => (votes[member.id] ?? []).length > 0)
+    const onSaveRef = useRef(onSave)
+    const timerRef = useRef<number | null>(null)
+    const pendingRef = useRef<Genre[] | null>(null)
 
-    async function toggle(genre: Genre) {
+    useEffect(() => {
+        onSaveRef.current = onSave
+    }, [onSave])
+
+    useEffect(() => {
+        return () => {
+            if (timerRef.current != null) window.clearTimeout(timerRef.current)
+            const pending = pendingRef.current
+            if (pending) void onSaveRef.current(pending)
+        }
+    }, [])
+
+    function toggle(genre: Genre) {
         const current = edited ? mine : live
         const next = current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre]
         setEdited(true)
         setMine(next)
         setStatus('saving')
-        try {
-            await onSave(next)
-            setStatus('saved')
-        } catch {
-            setEdited(false)
-            setMine(live)
-            setStatus('idle')
-        }
+        pendingRef.current = next
+        if (timerRef.current != null) window.clearTimeout(timerRef.current)
+        timerRef.current = window.setTimeout(() => {
+            const saved = pendingRef.current
+            pendingRef.current = null
+            timerRef.current = null
+            if (!saved) return
+            onSaveRef.current(saved)
+                .then(() => setStatus('saved'))
+                .catch(() => {
+                    setEdited(false)
+                    setMine(live)
+                    setStatus('idle')
+                })
+        }, 400)
     }
 
     return (

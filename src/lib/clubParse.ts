@@ -80,6 +80,7 @@ export function asClub(code: string, data: Record<string, unknown>): Club {
         code,
         createdBy: asString(data.createdBy),
         currentRoundId: asString(data.currentRoundId),
+        previousRoundId: data.previousRoundId ? String(data.previousRoundId) : null,
         currentBookId: data.currentBookId ? String(data.currentBookId) : null,
         currentBook: parseCurrentBook(data.currentBook),
         createdAt: asNumber(data.createdAt),

@@ -1,41 +1,27 @@
 import {useEffect} from 'react'
-import {Link, Navigate, useParams} from 'react-router-dom'
+import {Link, Navigate} from 'react-router-dom'
 import {Nominate, Shortlist} from '../components/shortlistTools'
-import {Brand, buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Page} from '../components/ui'
+import {buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Page} from '../components/ui'
 import {friendlyFirebaseError} from '../lib/errors'
-import {availableShortlist} from '../lib/bookStatus'
+import {availableShortlist, staleShortlist} from '../lib/bookStatus'
 import {addNomination, pruneShortlist, removeFromShortlist, resolveCurrentBook, toggleAlreadyRead} from '../lib/store'
 import {useClub} from '../lib/useClub'
 
 export function ShortlistPage() {
-    const {code: rawCode = ''} = useParams()
-    const {code, uid, displayName, ready, state, error, setError} = useClub(rawCode)
+    const {code, uid, displayName, state, error, setError} = useClub()
+    const staleKey = state
+        ? staleShortlist(state)
+              .map((book) => book.id)
+              .sort()
+              .join(',')
+        : ''
 
     useEffect(() => {
-        if (!state) return
+        if (!state || !staleKey) return
         pruneShortlist(code, state).catch(() => undefined)
-    }, [code, state])
+    }, [code, staleKey, state])
 
-    if (!ready) {
-        return (
-            <Page>
-                <p>Getting you in…</p>
-            </Page>
-        )
-    }
-
-    if (!uid || !displayName) {
-        return <Navigate to={`/club/${code}`} replace/>
-    }
-
-    if (!state || !uid) {
-        return (
-            <Page>
-                <Brand/>
-                <p>{error ?? 'Loading shortlist…'}</p>
-            </Page>
-        )
-    }
+    if (!uid || !displayName || !state) return null
 
     if (!resolveCurrentBook(state)) {
         return <Navigate to={`/club/${code}`} replace/>

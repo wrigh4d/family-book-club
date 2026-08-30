@@ -34,6 +34,7 @@ function state(partial: {
             code: 'ABCD',
             createdBy: 'u1',
             currentRoundId: 'r1',
+            previousRoundId: null,
             currentBookId: partial.current?.olid ?? null,
             currentBook: partial.current
                 ? {

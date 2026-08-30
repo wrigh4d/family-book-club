@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState, type ReactNode} from 'react'
-import {Navigate, useNavigate, useParams} from 'react-router-dom'
+import {Navigate, useNavigate} from 'react-router-dom'
 import {Cover, ErrorBanner} from '../components/ui'
 import {formatBookFacts} from '../lib/bookMeta'
 import {friendlyFirebaseError} from '../lib/errors'
@@ -94,8 +94,7 @@ function useRotateIndex(length: number, paused: boolean): number {
 }
 
 export function Present() {
-    const {code: rawCode = ''} = useParams()
-    const {code, uid, displayName, ready, state, error, setError} = useClub(rawCode)
+    const {code, uid, displayName, state, error, setError} = useClub()
     const navigate = useNavigate()
     const current = state ? resolveCurrentBook(state) : null
     const history = state ? currentHistoryBook(state) : null
@@ -106,17 +105,7 @@ export function Present() {
     const [paused, setPaused] = useState(false)
     const hasRight = views.length > 0 || recs.length > 0
 
-    if (ready && (!uid || !displayName)) {
-        return <Navigate to={`/club/${code}`} replace/>
-    }
-
-    if (!ready || !state) {
-        return (
-            <div className="flex h-dvh items-center justify-center bg-ink px-4 text-cream">
-                <p>{error ?? 'Opening presenting mode…'}</p>
-            </div>
-        )
-    }
+    if (!uid || !displayName || !state) return null
 
     if (!current) {
         return <Navigate to={`/club/${code}`} replace/>

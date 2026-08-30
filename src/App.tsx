@@ -1,6 +1,7 @@
 import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom'
 import {AuthProvider} from './lib/auth'
 import {ClubHome} from './pages/ClubHome'
+import {ClubLayout} from './pages/ClubLayout'
 import {Landing} from './pages/Landing'
 import {Present} from './pages/Present'
 import {ShortlistPage} from './pages/ShortlistPage'
@@ -13,9 +14,11 @@ export default function App() {
             <BrowserRouter basename={basename}>
                 <Routes>
                     <Route path="/" element={<Landing/>}/>
-                    <Route path="/club/:code" element={<ClubHome/>}/>
-                    <Route path="/club/:code/shortlist" element={<ShortlistPage/>}/>
-                    <Route path="/club/:code/present" element={<Present/>}/>
+                    <Route path="/club/:code" element={<ClubLayout/>}>
+                        <Route index element={<ClubHome/>}/>
+                        <Route path="shortlist" element={<ShortlistPage/>}/>
+                        <Route path="present" element={<Present/>}/>
+                    </Route>
                     <Route path="*" element={<Navigate to="/" replace/>}/>
                 </Routes>
             </BrowserRouter>

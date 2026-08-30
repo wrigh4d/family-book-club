@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 import {asGenre, isGenre} from '../types'
-import {asRound, asRoundStatus, parseAppRec, parseCurrentBook, parseGenreList} from './clubParse'
+import {asClub, asRound, asRoundStatus, parseAppRec, parseCurrentBook, parseGenreList} from './clubParse'
 
 describe('asGenre', () => {
     it('keeps known genres and falls back to Literary', () => {
@@ -58,6 +58,20 @@ describe('parseAppRec', () => {
             'ratings',
         )
         expect(parseAppRec({title: 'No id'})).toBeNull()
+    })
+})
+
+describe('asClub', () => {
+    it('reads previousRoundId when present', () => {
+        expect(
+            asClub('ABCD', {
+                name: 'Club',
+                createdBy: 'u1',
+                currentRoundId: 'r2',
+                previousRoundId: 'r1',
+            }).previousRoundId,
+        ).toBe('r1')
+        expect(asClub('ABCD', {name: 'Club', currentRoundId: 'r2'}).previousRoundId).toBeNull()
     })
 })
 

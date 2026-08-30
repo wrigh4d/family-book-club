@@ -1,21 +1,19 @@
-import {type FormEvent, useEffect, useRef, useState} from 'react'
-import {Link, useNavigate, useParams} from 'react-router-dom'
+import {type FormEvent, useState} from 'react'
+import {Link, useNavigate} from 'react-router-dom'
 import {ConcludePicker} from '../components/ConcludePicker'
 import {CurrentBookCard} from '../components/CurrentBookCard'
 import {FirstBookSetup} from '../components/FirstBookSetup'
 import {GenreVotes} from '../components/GenreVotes'
-import {Accordion, AccentRule, Brand, Button, buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Field, GoogleSignInCard, NameForm, Page, SessionBar, TextButton, TextInput} from '../components/ui'
+import {Accordion, Button, buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Field, Page, SessionBar, TextInput} from '../components/ui'
 import {friendlyFirebaseError} from '../lib/errors'
 import {meetingRecsFromRound} from '../lib/recs'
 import {
     addNomination,
     addRule,
     isOwner,
-    migrateRoundNominationsToShortlist,
     pickNextBook,
     removeFromShortlist,
     resolveCurrentBook,
-    seedGenreVotesFromPreviousRound,
     setGenreVotes,
     setStartingBook,
     startPresenting,
@@ -25,50 +23,16 @@ import {useClub} from '../lib/useClub'
 import {type ClubState, recToCurrentBook} from '../types'
 
 export function ClubHome() {
-    const {code: rawCode = ''} = useParams()
-    const {
-        code,
-        uid,
-        displayName,
-        suggestedName,
-        ready,
-        state,
-        error,
-        setError,
-        setDisplayName,
-        signInWithGoogle,
-        signOut,
-    } = useClub(rawCode)
+    const {code, uid, displayName, state, error, setError, signOut} = useClub()
     const navigate = useNavigate()
     const [copied, setCopied] = useState(false)
-    const [authBusy, setAuthBusy] = useState(false)
-    const seededRoundId = useRef<string | null>(null)
 
-    useEffect(() => {
-        if (!state?.round || state.round.status !== 'collecting' || !uid) return
-        if (!isOwner(state, uid)) return
-        if (seededRoundId.current === state.round.id) return
-        seededRoundId.current = state.round.id
-        seedGenreVotesFromPreviousRound(code, state.round.id).catch(() => undefined)
-        migrateRoundNominationsToShortlist(code, state.round.id).catch(() => undefined)
-    }, [code, uid, state?.round?.id, state?.round?.status, state, setError])
+    if (!uid || !displayName || !state) return null
 
     const invite = `${window.location.origin}${import.meta.env.BASE_URL}club/${code}`.replace(
         /([^:]\/)\/+/g,
         '$1',
     )
-
-    async function handleGoogle() {
-        setError(null)
-        setAuthBusy(true)
-        try {
-            await signInWithGoogle()
-        } catch (err) {
-            setError(friendlyFirebaseError(err))
-        } finally {
-            setAuthBusy(false)
-        }
-    }
 
     async function handleSignOut() {
         await signOut()
@@ -83,74 +47,6 @@ export function ClubHome() {
         } catch {
             setError('Could not copy the invite link.')
         }
-    }
-
-    if (!ready) {
-        return (
-            <Page>
-                <p>Getting you in…</p>
-            </Page>
-        )
-    }
-
-    if (!uid) {
-        return (
-            <Page>
-                <header className="flex flex-col gap-3">
-                    <div>
-                        <Brand/>
-                        <h1 className="font-display text-3xl">Join this club</h1>
-                    </div>
-                    <AccentRule/>
-                </header>
-                <ErrorBanner message={error}/>
-                <GoogleSignInCard onSignIn={() => void handleGoogle()} busy={authBusy}/>
-            </Page>
-        )
-    }
-
-    if (!displayName) {
-        return (
-            <Page>
-                <header className="flex flex-col gap-3">
-                    <div>
-                        <Brand/>
-                        <h1 className="font-display text-3xl">Join this club</h1>
-                    </div>
-                    <AccentRule/>
-                </header>
-                <ErrorBanner message={error}/>
-                <p className="text-sm text-ink/70">
-                    Signed in with Google
-                    {' · '}
-                    <TextButton onClick={() => void handleSignOut()}>Sign out</TextButton>
-                </p>
-                <Card>
-                    <NameForm
-                        busyLabel="Join club"
-                        defaultName={suggestedName ?? ''}
-                        onSave={async (name) => {
-                            await setDisplayName(name)
-                        }}
-                    />
-                </Card>
-            </Page>
-        )
-    }
-
-    if (!state || !uid) {
-        return (
-            <Page>
-                <Brand/>
-                <p>Loading club…</p>
-                <ErrorBanner message={error}/>
-                {error ? (
-                    <Button variant="ghost" onClick={() => navigate('/')}>
-                        Back
-                    </Button>
-                ) : null}
-            </Page>
-        )
     }
 
     const current = resolveCurrentBook(state)

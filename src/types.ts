@@ -147,6 +147,7 @@ export type Club = {
     code: string
     createdBy: string
     currentRoundId: string
+    previousRoundId: string | null
     currentBookId: string | null
     currentBook: CurrentBook | null
     createdAt: number

@@ -1,6 +1,12 @@
 import {initializeApp} from 'firebase/app'
 import {getAuth} from 'firebase/auth'
-import {getFirestore} from 'firebase/firestore'
+import {
+    getFirestore,
+    initializeFirestore,
+    memoryLocalCache,
+    persistentLocalCache,
+    persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 // Public web config. Do not add a service-account JSON here — that is a secret.
 const firebaseConfig = {
@@ -18,5 +24,19 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
+function createDb() {
+    const canPersist =
+        typeof window !== 'undefined' && typeof indexedDB !== 'undefined'
+    try {
+        return initializeFirestore(app, {
+            localCache: canPersist
+                ? persistentLocalCache({tabManager: persistentMultipleTabManager()})
+                : memoryLocalCache(),
+        })
+    } catch {
+        return getFirestore(app)
+    }
+}
+
 export const auth = getAuth(app)
-export const db = getFirestore(app)
+export const db = createDb()
