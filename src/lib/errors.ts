@@ -19,6 +19,9 @@ export function friendlyFirebaseError(error: unknown): string {
     ) {
         return 'Firestore is not created yet. In Firebase: Build → Firestore Database → Create database → start in test mode.'
     }
+    if (code === 'permission-denied' || /insufficient permissions/i.test(message)) {
+        return 'Firestore blocked this action. Publish the rules from firestore.rules in this repo (Firebase → Firestore → Rules → Publish). Local and GitHub Pages use the same database.'
+    }
     if (message) return message
     return 'Something went wrong. Try again.'
 }

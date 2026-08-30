@@ -13,23 +13,31 @@ service cloud.firestore {
       return /databases/$(database)/documents/clubs/$(clubId);
     }
 
-    function clubAfter() {
-      return getAfter(clubPath()).data;
+    function memberPath() {
+      return /databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid);
+    }
+
+    // Club already exists (reads / subcollection writes).
+    function isCreator() {
+      return signedIn()
+        && exists(clubPath())
+        && get(clubPath()).data.createdBy == request.auth.uid;
     }
 
     function isOwner() {
-      return signedIn() && (
-        get(clubPath()).data.createdBy == request.auth.uid ||
-        (
-          exists(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)).data.role == 'owner'
-        )
-      );
+      return isCreator()
+        || (
+          signedIn()
+          && exists(memberPath())
+          && get(memberPath()).data.role == 'owner'
+        );
     }
 
-    function isMember() {
-      return signedIn() &&
-        exists(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid));
+    // Club is being created in this same batch/transaction.
+    function isCreatorAfter() {
+      return signedIn()
+        && existsAfter(clubPath())
+        && getAfter(clubPath()).data.createdBy == request.auth.uid;
     }
 
     match /users/{userId} {
@@ -48,9 +56,16 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 80;
-      allow update: if isOwner()
+      // Do not get() this same document during an update — use resource.
+      allow update: if signedIn()
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.code == resource.data.code;
+        && (
+          resource.data.createdBy == request.auth.uid
+          || (
+            exists(memberPath())
+            && get(memberPath()).data.role == 'owner'
+          )
+        );
       allow delete: if false;
 
       match /members/{userId} {
@@ -61,10 +76,7 @@ service cloud.firestore {
           && request.resource.data.displayName.size() <= 80
           && (
             request.resource.data.role == 'member'
-            || (
-              request.resource.data.role == 'owner'
-              && clubAfter().createdBy == request.auth.uid
-            )
+            || (request.resource.data.role == 'owner' && isCreatorAfter())
           );
         allow update: if isSelf(userId)
           && request.resource.data.role == resource.data.role;
@@ -73,28 +85,26 @@ service cloud.firestore {
 
       match /rules/{ruleId} {
         allow read: if signedIn();
-        allow create: if isMember()
+        allow create: if signedIn()
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 500
           && request.resource.data.createdBy == request.auth.uid;
-        allow update, delete: if isMember()
+        allow update, delete: if signedIn()
           && resource.data.createdBy == request.auth.uid;
       }
 
       match /shortlist/{itemId} {
-        allow read: if signedIn();
-        allow write: if isMember();
+        allow read, write: if signedIn();
       }
 
       match /history/{itemId} {
-        allow read: if signedIn();
-        allow write: if isMember();
+        allow read, write: if signedIn();
       }
 
       match /rounds/{roundId} {
         allow read: if signedIn();
-        allow create: if signedIn() && clubAfter().createdBy == request.auth.uid;
+        allow create: if isCreatorAfter();
         allow update: if isOwner();
         allow delete: if false;
 
@@ -103,7 +113,6 @@ service cloud.firestore {
           allow write: if isSelf(userId) || isOwner();
         }
 
-        // Legacy per-round nominations; kept so an owner can migrate them.
         match /nominations/{itemId} {
           allow read: if signedIn();
           allow write: if isOwner();
