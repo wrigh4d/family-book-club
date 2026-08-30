@@ -1,51 +1,62 @@
 # Family Book Club
 
-A small phone-friendly website for a family book club. Share a link, join with a name and a code, collect rules and nominations, then **present** the next book when you meet.
+A small phone-friendly website for a family book club. Share a GitHub Pages link, join with a **name and a club code**, keep a standing shortlist, and **present** when you meet so everyone sees the same current book and next-book options.
 
-Live idea: pick a book people will actually read. The first fantasy book was a hit; a later non-fiction pick was not; a book some people had already read killed momentum. This app captures what people want **this round** and suggests a next book from that.
+It exists because the first fantasy pick was a hit, a later non-fiction pick was not, and a book some people had already read killed momentum. The app is for picking something the group will actually read—not a social network.
 
-## What it does (v1)
+## How a club runs
 
-- Create / join a club with a **display name + club code** (no email)
-- Club **rules** board (honor system — the app does not verify them)
-- Each **round**: vote genres, search Open Library, nominate books, flag “I’ve already read this”
-- A shortlist plus one **suggestion**, using this round’s genres, past ratings, and a soft already-read penalty
-- **Presenting mode** for the meetup (large type)
-- Rate the finished book 1–5 so the next round steers toward genres the group liked
+Only the **owner** moves the club from one phase to the next. Everyone else can still vote, rate, nominate, and view presenting once the owner has started it.
 
-Later (not built yet): Google/email accounts, a current-book page, personal notes.
+1. **First book (once)**  
+   Until there is a current book, the club is a setup screen. The owner searches Open Library or picks from globally popular titles. Members wait.
 
-## You still need to click two things in Firebase
+2. **Between meetings**  
+   Current book (rate 1–5, optional personal note), genre votes for next time, and a **Shortlist (N)** page to search and add books. Genre is taken from Open Library subjects, not a dropdown. No app recs on this screen.
 
-The web app config is already in the project. Firebase will refuse sign-in and data until these two products exist.
+3. **Present this meeting** (owner)  
+   Recs are computed **once** from this cycle’s genre votes and past ratings, then frozen. The presenting view shows the current book, personal notes (slow scroll, omitted if none), rules, genre lean, a looping shortlist strip (omitted if empty), and up to two recs:
+   - most popular in the lead genre
+   - from past club ratings (hidden until something has been rated)
 
-### 1. Anonymous sign-in
+   **Back** leaves without finishing. **Conclude meeting** is owner-only.
 
-Open this page (you must be logged into the Google account that owns the project):
+4. **Conclusion** (owner)  
+   Add a rec to the shortlist if you want it. Pick the next current book from the shortlist or search Open Library. Recs that were **shown** and **not** added to the shortlist are ignored for future presentations (so the same popular title does not keep coming back). The shortlist itself **does not reset**.
+
+## What it does
+
+- Create / join a club with a display name + code (no email)
+- Rules board (honor system)
+- Persistent club shortlist, including “I’ve already read this”
+- Personal notes on the current book, shown in presenting if anyone wrote one
+- Meeting recs from Open Library (subjects, popularity, past ratings/tags)
+- Owner-only phase changes
+
+Identity is per device (Firebase anonymous auth). Clearing the browser or switching phones is a new person until accounts exist.
+
+## Firebase
+
+The public web config is in the project. You still need Anonymous auth and Firestore.
+
+### Anonymous sign-in
 
 **[Authentication → Sign-in method](https://console.firebase.google.com/project/familybookclub-52781/authentication/providers)**
 
-1. If you see **Get started**, click it.
-2. In the list of providers, click **Anonymous**.
-3. Turn it **On** / **Enable**, then **Save**.
+1. **Get started** if you see it.
+2. **Anonymous** → On → Save.
 
-If the left menu looks different: open the project `familybookclub-52781` → **Build** (or **Security**) → **Authentication** → **Sign-in method** tab → **Anonymous**.
-
-### 2. Create Firestore (this is the database, not “Firestone”)
-
-Open:
+### Firestore
 
 **[Firestore Database](https://console.firebase.google.com/project/familybookclub-52781/firestore)**
 
-1. Click **Create database**.
-2. Choose **Start in test mode** (we ship stricter rules in `firestore.rules`; test mode is fine for a family club).
-3. Pick a location close to you (for example `nam5` / Iowa) and **Enable** / **Create**.
+1. **Create database**.
+2. Start in test mode (family-grade; `firestore.rules` is in the repo).
+3. Pick a location and create.
 
-Wait until the empty data viewer appears. Then the app can store clubs.
+On the live site, add `YOUR_USERNAME.github.io` under Authentication → Settings → **Authorized domains**.
 
-### Do not use the service account
-
-The snippet that starts with `firebase-adminsdk` / `serviceAccountKey.json` is a **server secret**. Do not put it in this website or in GitHub. The public web config (`apiKey`, `projectId`, …) is enough.
+Do not commit `serviceAccountKey.json` or the Admin SDK. The web `apiKey` / `projectId` config is enough.
 
 ## Run locally
 
@@ -60,23 +71,19 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 ## Deploy to GitHub Pages
 
-1. Create a GitHub repo named `family-book-club`.
-2. Push this folder to `main`.
-3. GitHub → **Settings** → **Pages** → **Source: GitHub Actions**.
-4. After the workflow runs, the site is at `https://<you>.github.io/family-book-club/`.
+Repo name `family-book-club` matches `VITE_BASE` in `.github/workflows/deploy.yml`.
 
-If the repo name is not `family-book-club`, change `VITE_BASE` in `.github/workflows/deploy.yml`.
+1. Push `main` to GitHub.
+2. **Settings → Pages → Source: GitHub Actions**.
+3. After the workflow succeeds: `https://<you>.github.io/family-book-club/`.
 
 ## Stack
 
-Vite, React, TypeScript, Tailwind, Firebase Auth (anonymous) + Firestore, Open Library search.
+Vite, React, TypeScript, Tailwind, Firebase Auth (anonymous) + Firestore, Open Library.
 
-## Suggestion scoring
+## Recs (at Present, not between meetings)
 
-For each nominated book:
-
-1. How many people voted that **genre this round**
-2. How the group **rated past books** in that genre (boosts or penalizes, never bans)
-3. Minus a small amount per **already-read** flag
-
-Highest score is the suggestion. The rest is the shortlist. Locking a round freezes that pick so presenting mode does not jump mid-meeting.
+- **Genre rec:** popular Open Library title in the genre the group voted for this cycle.
+- **Ratings rec:** after books have been rated, lean into well-rated tags and shy away from poorly rated ones.
+- Exclude: current book, history, shortlist, and previously shown recs that were not shortlisted (including close title matches).
+- Empty recs are not rendered.
