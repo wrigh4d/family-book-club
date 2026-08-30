@@ -83,7 +83,7 @@ export function Landing() {
                         <h2 className="mb-3 font-display text-2xl">Create a club</h2>
                         <form className="flex flex-col gap-3" onSubmit={handleCreate}>
                             <Field label="Club name">
-                                <TextInput name="clubName" placeholder="Sunday readers" required/>
+                                <TextInput name="clubName" placeholder="Sunday readers" required maxLength={80}/>
                             </Field>
                             <Button type="submit" disabled={busy}>
                                 Create club
@@ -98,6 +98,8 @@ export function Landing() {
                                     name="code"
                                     placeholder="AB3K7Q"
                                     autoCapitalize="characters"
+                                    autoComplete="off"
+                                    spellCheck={false}
                                     required
                                 />
                             </Field>

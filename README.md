@@ -61,8 +61,10 @@ The public web config is in the project. You still need Anonymous auth and Fires
 **[Firestore Database](https://console.firebase.google.com/project/familybookclub-52781/firestore)**
 
 1. **Create database**.
-2. Start in test mode (family-grade; `firestore.rules` is in the repo).
-3. Pick a location and create.
+2. Pick a location and create.
+3. Deploy the rules in `firestore.rules` (Firebase console → Firestore → Rules, or `firebase deploy --only firestore:rules`). Do not leave the database in test mode: those rules let any signed-in user list every club and overwrite club data.
+
+Club codes are document IDs. Anyone who knows a code can join; the rules forbid listing `/clubs`, so codes cannot be enumerated. Ownership (`createdBy` / owner role) cannot be taken over from a member account.
 
 On the live site, add `YOUR_USERNAME.github.io` under Authentication → Settings → **Authorized domains**.
 

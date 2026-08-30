@@ -1,0 +1,78 @@
+import type {FormEvent, ReactNode} from 'react'
+import type {BookSearchHit} from '../lib/openLibrary'
+import {Button, Cover, TextInput} from './ui'
+
+export function BookSearchForm({
+    query,
+    onQueryChange,
+    searching,
+    onSearch,
+    submitLabel = 'Search Open Library',
+}: {
+    query: string
+    onQueryChange: (value: string) => void
+    searching: boolean
+    onSearch: (event: FormEvent) => void
+    submitLabel?: string
+}) {
+    return (
+        <form className="flex flex-col gap-2" onSubmit={onSearch}>
+            <TextInput
+                value={query}
+                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder="Search title or author"
+                aria-label="Search title or author"
+            />
+            <Button type="submit" variant="ghost" disabled={searching}>
+                {searching ? 'Searching…' : submitLabel}
+            </Button>
+        </form>
+    )
+}
+
+export function BookHitRow({
+    hit,
+    action,
+}: {
+    hit: BookSearchHit
+    action?: ReactNode
+}) {
+    return (
+        <li className="flex items-center gap-3 rounded-xl bg-cream p-2">
+            <Cover src={hit.coverUrl} title={hit.title} className="h-16 w-11"/>
+            <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{hit.title}</p>
+                <p className="truncate text-sm text-ink/70">{hit.author}</p>
+            </div>
+            {action}
+        </li>
+    )
+}
+
+export function BookPickList({
+    books,
+    onPick,
+}: {
+    books: BookSearchHit[]
+    onPick: (hit: BookSearchHit) => void
+}) {
+    return (
+        <ul className="flex flex-col gap-2">
+            {books.map((hit) => (
+                <li key={hit.olid}>
+                    <button
+                        type="button"
+                        className="flex w-full items-center gap-3 rounded-xl bg-cream p-2 text-left transition hover:bg-burgundy/10"
+                        onClick={() => onPick(hit)}
+                    >
+                        <Cover src={hit.coverUrl} title={hit.title} className="h-16 w-11"/>
+                        <span>
+                            <span className="block font-semibold">{hit.title}</span>
+                            <span className="text-sm text-ink/70">{hit.author}</span>
+                        </span>
+                    </button>
+                </li>
+            ))}
+        </ul>
+    )
+}

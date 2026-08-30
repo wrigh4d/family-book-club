@@ -5,18 +5,109 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    match /users/{userId} {
-      allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == userId;
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
     }
 
-    // Club code is the secret. Anyone signed in who knows the code can use the club.
-    match /clubs/{clubId} {
-      allow read, create: if signedIn();
-      allow update: if signedIn();
+    function clubPath() {
+      return /databases/$(database)/documents/clubs/$(clubId);
+    }
 
-      match /{document=**} {
-        allow read, write: if signedIn();
+    function clubAfter() {
+      return getAfter(clubPath()).data;
+    }
+
+    function isOwner() {
+      return signedIn() && (
+        get(clubPath()).data.createdBy == request.auth.uid ||
+        (
+          exists(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)).data.role == 'owner'
+        )
+      );
+    }
+
+    function isMember() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid));
+    }
+
+    match /users/{userId} {
+      allow get, write: if isSelf(userId);
+      allow list: if false;
+    }
+
+    // Club code is the document ID. Anyone signed in who knows the code can
+    // read that club. Listing the collection would leak every code.
+    match /clubs/{clubId} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.code == clubId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80;
+      allow update: if isOwner()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.code == resource.data.code;
+      allow delete: if false;
+
+      match /members/{userId} {
+        allow read: if signedIn();
+        allow create: if isSelf(userId)
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() > 0
+          && request.resource.data.displayName.size() <= 80
+          && (
+            request.resource.data.role == 'member'
+            || (
+              request.resource.data.role == 'owner'
+              && clubAfter().createdBy == request.auth.uid
+            )
+          );
+        allow update: if isSelf(userId)
+          && request.resource.data.role == resource.data.role;
+        allow delete: if false;
+      }
+
+      match /rules/{ruleId} {
+        allow read: if signedIn();
+        allow create: if isMember()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update, delete: if isMember()
+          && resource.data.createdBy == request.auth.uid;
+      }
+
+      match /shortlist/{itemId} {
+        allow read: if signedIn();
+        allow write: if isMember();
+      }
+
+      match /history/{itemId} {
+        allow read: if signedIn();
+        allow write: if isMember();
+      }
+
+      match /rounds/{roundId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && clubAfter().createdBy == request.auth.uid;
+        allow update: if isOwner();
+        allow delete: if false;
+
+        match /genreVotes/{userId} {
+          allow read: if signedIn();
+          allow write: if isSelf(userId) || isOwner();
+        }
+
+        // Legacy per-round nominations; kept so an owner can migrate them.
+        match /nominations/{itemId} {
+          allow read: if signedIn();
+          allow write: if isOwner();
+        }
       }
     }
   }

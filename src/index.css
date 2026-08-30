@@ -80,3 +80,10 @@ button:disabled {
     width: max-content;
     animation: shortlist-scroll 40s linear infinite;
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .note-ticker-track,
+    .shortlist-ticker-track {
+        animation: none;
+    }
+}

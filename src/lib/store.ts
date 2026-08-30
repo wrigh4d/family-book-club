@@ -3,176 +3,30 @@ import {
     arrayRemove,
     arrayUnion,
     collection,
-    deleteDoc,
     doc,
-    type DocumentData,
     getDoc,
     getDocs,
     onSnapshot,
+    runTransaction,
     setDoc,
     type Unsubscribe,
     updateDoc,
+    writeBatch,
 } from 'firebase/firestore'
-import {db} from './firebase'
+import {asGenre, type AppRecommendation, type Club, type ClubState, type CurrentBook, type Genre, type HistoryBook, type Member, type Nomination, type Round, type Rule, type SuggestionSnapshot} from '../types'
+import {asClub, asHistory, asMember, asNomination, asRound, asRule, parseGenreList} from './clubParse'
 import {randomClubCode} from './codes'
+import {db} from './firebase'
 import {fetchWorkSubjects, isSameRecommendedBook} from './openLibrary'
 import {computeMeetingRecs} from './recs'
 import {scoreNominations} from './suggestion'
-import type {
-    AppRecommendation,
-    Club,
-    ClubState,
-    CurrentBook,
-    Genre,
-    HistoryBook,
-    Member,
-    Nomination,
-    Round,
-    Rule,
-    SuggestionSnapshot,
-} from '../types'
 
 function clubRef(code: string) {
     return doc(db, 'clubs', code)
 }
 
-function parseDislikedRecs(value: unknown): Club['dislikedRecs'] {
-    if (!Array.isArray(value)) return []
-    const recs: Club['dislikedRecs'] = []
-    for (const row of value) {
-        if (!row || typeof row !== 'object') continue
-        const rec = row as { olid?: unknown; title?: unknown; userId?: unknown }
-        if (!rec.olid || !rec.title) continue
-        const item: Club['dislikedRecs'][number] = {
-            olid: String(rec.olid),
-            title: String(rec.title),
-        }
-        if (rec.userId) item.userId = String(rec.userId)
-        recs.push(item)
-    }
-    return recs
-}
-
-function asClub(code: string, data: DocumentData): Club {
-    return {
-        name: String(data.name ?? 'Book club'),
-        code,
-        createdBy: String(data.createdBy ?? ''),
-        currentRoundId: String(data.currentRoundId ?? ''),
-        currentBookId: data.currentBookId ? String(data.currentBookId) : null,
-        currentBook: parseCurrentBook(data.currentBook),
-        createdAt: Number(data.createdAt ?? 0),
-        dislikedRecs: parseDislikedRecs(data.dislikedRecs),
-    }
-}
-
-function parseCurrentBook(value: unknown): CurrentBook | null {
-    if (!value || typeof value !== 'object') return null
-    const book = value as Record<string, unknown>
-    if (!book.title) return null
-    return {
-        olid: String(book.olid ?? ''),
-        title: String(book.title),
-        author: String(book.author ?? ''),
-        coverUrl: book.coverUrl ? String(book.coverUrl) : null,
-        genre: String(book.genre ?? 'Literary'),
-    }
-}
-
-function asMember(id: string, data: DocumentData): Member {
-    return {
-        id,
-        displayName: String(data.displayName ?? 'Reader'),
-        role: data.role === 'owner' ? 'owner' : 'member',
-        joinedAt: Number(data.joinedAt ?? 0),
-    }
-}
-
-function asRule(id: string, data: DocumentData): Rule {
-    return {
-        id,
-        text: String(data.text ?? ''),
-        createdBy: String(data.createdBy ?? ''),
-        createdByName: String(data.createdByName ?? 'Someone'),
-        createdAt: Number(data.createdAt ?? 0),
-    }
-}
-
-function asNomination(id: string, data: DocumentData): Nomination {
-    return {
-        id,
-        olid: String(data.olid ?? ''),
-        title: String(data.title ?? 'Untitled'),
-        author: String(data.author ?? 'Unknown'),
-        coverUrl: data.coverUrl ? String(data.coverUrl) : null,
-        genre: (data.genre as Nomination['genre']) || 'Literary',
-        nominatedBy: String(data.nominatedBy ?? ''),
-        nominatedByName: String(data.nominatedByName ?? 'Someone'),
-        alreadyReadBy: Array.isArray(data.alreadyReadBy)
-            ? data.alreadyReadBy.map(String)
-            : [],
-        createdAt: Number(data.createdAt ?? 0),
-    }
-}
-
-function asRoundStatus(value: unknown): Round['status'] {
-    if (value === 'presenting' || value === 'locked') return 'presenting'
-    if (value === 'concluding') return 'concluding'
-    return 'collecting'
-}
-
-function asRound(id: string, data: DocumentData): Round {
-    const suggestion = data.suggestion as SuggestionSnapshot | undefined
-    return {
-        id,
-        status: asRoundStatus(data.status),
-        startedAt: Number(data.startedAt ?? 0),
-        lockedAt: data.lockedAt ? Number(data.lockedAt) : undefined,
-        selectedNominationId: data.selectedNominationId
-            ? String(data.selectedNominationId)
-            : undefined,
-        suggestion,
-        genreRecommendation:
-            (data.genreRecommendation as AppRecommendation | null | undefined) ??
-            suggestion?.genreRecommendation ??
-            suggestion?.appRecommendation ??
-            null,
-        ratingsRecommendation:
-            (data.ratingsRecommendation as AppRecommendation | null | undefined) ??
-            suggestion?.ratingsRecommendation ??
-            null,
-    }
-}
-
-function asHistory(id: string, data: DocumentData): HistoryBook {
-    return {
-        id,
-        roundId: String(data.roundId ?? ''),
-        olid: String(data.olid ?? ''),
-        title: String(data.title ?? ''),
-        author: String(data.author ?? ''),
-        coverUrl: data.coverUrl ? String(data.coverUrl) : null,
-        genre: data.genre as HistoryBook['genre'],
-        finishedAt: Number(data.finishedAt ?? 0),
-        ratings:
-            data.ratings && typeof data.ratings === 'object'
-                ? Object.fromEntries(
-                    Object.entries(data.ratings as Record<string, unknown>).map(
-                        ([uid, stars]) => [uid, Number(stars)],
-                    ),
-                )
-                : {},
-        notes:
-            data.notes && typeof data.notes === 'object'
-                ? Object.fromEntries(
-                    Object.entries(data.notes as Record<string, unknown>).map(([id, text]) => [
-                        id,
-                        String(text),
-                    ]),
-                )
-                : {},
-        subjects: Array.isArray(data.subjects) ? data.subjects.map(String) : [],
-    }
+function dataOf(snap: {data: () => unknown}): Record<string, unknown> {
+    return (snap.data() ?? {}) as Record<string, unknown>
 }
 
 export function isOwner(state: ClubState, uid: string): boolean {
@@ -206,26 +60,10 @@ export function currentHistoryId(state: ClubState): string | null {
     return `book-${book.olid.replaceAll('/', '_')}`
 }
 
-export function wrapUpStatus(state: ClubState): {
-    historyId: string | null
-    book: HistoryBook | null
-    missingRaters: ClubState['members']
-    hasNote: boolean
-    ready: boolean
-} {
+export function currentHistoryBook(state: ClubState): HistoryBook | null {
     const historyId = currentHistoryId(state)
-    const book = historyId
-        ? (state.history.find((row) => row.id === historyId) ?? null)
-        : null
-    const missingRaters = state.members.filter((member) => book?.ratings[member.id] == null)
-    const hasNote = Object.values(book?.notes ?? {}).some((text) => text.trim())
-    return {
-        historyId,
-        book,
-        missingRaters,
-        hasNote,
-        ready: Boolean(historyId) && missingRaters.length === 0 && hasNote,
-    }
+    if (!historyId) return null
+    return state.history.find((row) => row.id === historyId) ?? null
 }
 
 export async function saveProfile(uid: string, displayName: string): Promise<void> {
@@ -250,31 +88,40 @@ export async function createClub(
 ): Promise<string> {
     const clubName = name.trim()
     if (!clubName) throw new Error('Give the club a name.')
+    const person = displayName.trim()
+    if (!person) throw new Error('Enter your name.')
 
     for (let attempt = 0; attempt < 6; attempt += 1) {
         const code = randomClubCode()
-        const existing = await getDoc(clubRef(code))
-        if (existing.exists()) continue
-
-        const now = Date.now()
-        const roundRef = doc(collection(clubRef(code), 'rounds'))
-        await setDoc(clubRef(code), {
-            name: clubName,
-            code,
-            createdBy: uid,
-            currentRoundId: roundRef.id,
-            currentBookId: null,
-            currentBook: null,
-            createdAt: now,
-            dislikedRecs: [],
-        })
-        await setDoc(doc(clubRef(code), 'members', uid), {
-            displayName,
-            role: 'owner',
-            joinedAt: now,
-        })
-        await setDoc(roundRef, {status: 'collecting', startedAt: now})
-        return code
+        try {
+            await runTransaction(db, async (tx) => {
+                const ref = clubRef(code)
+                const existing = await tx.get(ref)
+                if (existing.exists()) throw new Error('CODE_TAKEN')
+                const now = Date.now()
+                const roundRef = doc(collection(ref, 'rounds'))
+                tx.set(ref, {
+                    name: clubName,
+                    code,
+                    createdBy: uid,
+                    currentRoundId: roundRef.id,
+                    currentBookId: null,
+                    currentBook: null,
+                    createdAt: now,
+                    dislikedRecs: [],
+                })
+                tx.set(doc(ref, 'members', uid), {
+                    displayName: person,
+                    role: 'owner',
+                    joinedAt: now,
+                })
+                tx.set(roundRef, {status: 'collecting', startedAt: now})
+            })
+            return code
+        } catch (err) {
+            if (err instanceof Error && err.message === 'CODE_TAKEN') continue
+            throw err
+        }
     }
     throw new Error('Could not create a club code. Try again.')
 }
@@ -284,15 +131,18 @@ export async function joinClub(
     uid: string,
     displayName: string,
 ): Promise<void> {
+    const name = displayName.trim()
+    if (!name) throw new Error('Enter your name.')
     const snap = await getDoc(clubRef(code))
     if (!snap.exists()) throw new Error('No club with that code.')
-    const memberSnap = await getDoc(doc(clubRef(code), 'members', uid))
+    const memberRef = doc(clubRef(code), 'members', uid)
+    const memberSnap = await getDoc(memberRef)
     if (memberSnap.exists()) {
-        await updateDoc(doc(clubRef(code), 'members', uid), {displayName})
+        await updateDoc(memberRef, {displayName: name})
         return
     }
-    await setDoc(doc(clubRef(code), 'members', uid), {
-        displayName,
+    await setDoc(memberRef, {
+        displayName: name,
         role: 'member',
         joinedAt: Date.now(),
     })
@@ -311,12 +161,11 @@ export function subscribeClub(
     let genreVotes: Record<string, Genre[]> = {}
     let nominations: Nomination[] = []
     let history: HistoryBook[] = []
-    const recVotes: ClubState['recVotes'] = {}
     let roundUnsubs: Unsubscribe[] = []
 
     const emit = () => {
         if (!club) return
-        onData({club, members, rules, round, genreVotes, nominations, history, recVotes})
+        onData({club, members, rules, round, genreVotes, nominations, history})
     }
 
     const listenToRound = (roundId: string) => {
@@ -327,7 +176,7 @@ export function subscribeClub(
             onSnapshot(
                 rRef,
                 (snap) => {
-                    round = snap.exists() ? asRound(snap.id, snap.data()) : null
+                    round = snap.exists() ? asRound(snap.id, dataOf(snap)) : null
                     emit()
                 },
                 (err) => onError(err),
@@ -337,8 +186,7 @@ export function subscribeClub(
                 (snap) => {
                     genreVotes = {}
                     for (const row of snap.docs) {
-                        const genres = row.data().genres
-                        genreVotes[row.id] = Array.isArray(genres) ? (genres as Genre[]) : []
+                        genreVotes[row.id] = parseGenreList(row.data().genres)
                     }
                     emit()
                 },
@@ -355,7 +203,7 @@ export function subscribeClub(
                     onError(new Error('No club with that code.'))
                     return
                 }
-                club = asClub(code, snap.data())
+                club = asClub(code, dataOf(snap))
                 if (club.currentRoundId) listenToRound(club.currentRoundId)
                 emit()
             },
@@ -365,7 +213,7 @@ export function subscribeClub(
             collection(clubRef(code), 'members'),
             (snap) => {
                 members = snap.docs
-                    .map((row) => asMember(row.id, row.data()))
+                    .map((row) => asMember(row.id, dataOf(row)))
                     .sort((a, b) => a.joinedAt - b.joinedAt)
                 emit()
             },
@@ -375,7 +223,7 @@ export function subscribeClub(
             collection(clubRef(code), 'rules'),
             (snap) => {
                 rules = snap.docs
-                    .map((row) => asRule(row.id, row.data()))
+                    .map((row) => asRule(row.id, dataOf(row)))
                     .sort((a, b) => a.createdAt - b.createdAt)
                 emit()
             },
@@ -385,7 +233,7 @@ export function subscribeClub(
             collection(clubRef(code), 'shortlist'),
             (snap) => {
                 nominations = snap.docs
-                    .map((row) => asNomination(row.id, row.data()))
+                    .map((row) => asNomination(row.id, dataOf(row)))
                     .sort((a, b) => a.createdAt - b.createdAt)
                 emit()
             },
@@ -395,7 +243,7 @@ export function subscribeClub(
             collection(clubRef(code), 'history'),
             (snap) => {
                 history = snap.docs
-                    .map((row) => asHistory(row.id, row.data()))
+                    .map((row) => asHistory(row.id, dataOf(row)))
                     .sort((a, b) => b.finishedAt - a.finishedAt)
                 emit()
             },
@@ -418,7 +266,7 @@ export async function addRule(
     const trimmed = text.trim()
     if (!trimmed) throw new Error('Write a rule first.')
     await addDoc(collection(clubRef(code), 'rules'), {
-        text: trimmed,
+        text: trimmed.slice(0, 500),
         createdBy: uid,
         createdByName: displayName,
         createdAt: Date.now(),
@@ -431,7 +279,9 @@ export async function setGenreVotes(
     uid: string,
     genres: Genre[],
 ): Promise<void> {
-    await setDoc(doc(clubRef(code), 'rounds', roundId, 'genreVotes', uid), {genres})
+    await setDoc(doc(clubRef(code), 'rounds', roundId, 'genreVotes', uid), {
+        genres: parseGenreList(genres),
+    })
 }
 
 export async function migrateRoundNominationsToShortlist(
@@ -441,9 +291,12 @@ export async function migrateRoundNominationsToShortlist(
     const shortSnap = await getDocs(collection(clubRef(code), 'shortlist'))
     if (!shortSnap.empty) return
     const oldSnap = await getDocs(collection(clubRef(code), 'rounds', roundId, 'nominations'))
-    await Promise.all(
-        oldSnap.docs.map((row) => setDoc(doc(clubRef(code), 'shortlist', row.id), row.data())),
-    )
+    if (oldSnap.empty) return
+    const batch = writeBatch(db)
+    for (const row of oldSnap.docs) {
+        batch.set(doc(clubRef(code), 'shortlist', row.id), row.data())
+    }
+    await batch.commit()
 }
 
 export async function addNomination(
@@ -464,6 +317,7 @@ export async function addNomination(
     if (existing) return existing.id
     const ref = await addDoc(collection(clubRef(code), 'shortlist'), {
         ...book,
+        genre: asGenre(book.genre),
         nominatedBy: uid,
         nominatedByName: displayName,
         alreadyReadBy: [],
@@ -510,7 +364,6 @@ function snapshotFromState(
         genreRecommendation: genreRec ?? undefined,
         ratingsRecommendation:
             recs?.ratingsRecommendation ?? state.round?.ratingsRecommendation ?? undefined,
-        appRecommendation: genreRec ?? undefined,
     }
 }
 
@@ -544,7 +397,7 @@ function toCurrentBook(book: CurrentBook): CurrentBook {
         title: book.title,
         author: book.author || '',
         coverUrl: book.coverUrl ?? null,
-        genre: book.genre || 'Literary',
+        genre: asGenre(book.genre),
     }
 }
 
@@ -584,25 +437,32 @@ export async function pickNextBook(
             dislikedRecs.push({olid: rec.olid, title: rec.title})
         }
     }
+
+    const batch = writeBatch(db)
     if (book?.olid) {
         const listed = state.nominations.find((row) => row.olid === book.olid)
-        if (listed) await deleteDoc(doc(clubRef(code), 'shortlist', listed.id))
+        if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
     }
     const roundRef = doc(collection(clubRef(code), 'rounds'))
-    await setDoc(roundRef, {status: 'collecting', startedAt: Date.now()})
-    await copyGenreVotes(code, roundRef.id, state.genreVotes)
-    await updateDoc(clubRef(code), {
+    batch.set(roundRef, {status: 'collecting', startedAt: Date.now()})
+    for (const [userId, genres] of Object.entries(state.genreVotes)) {
+        if (genres.length > 0) {
+            batch.set(doc(clubRef(code), 'rounds', roundRef.id, 'genreVotes', userId), {genres})
+        }
+    }
+    batch.update(clubRef(code), {
         currentRoundId: roundRef.id,
         currentBookId: book?.olid ?? null,
         currentBook: book ? toCurrentBook(book) : null,
         dislikedRecs,
     })
+    await batch.commit()
 }
 
 export function personalNotes(
     state: ClubState,
-): Array<{ uid: string; name: string; text: string }> {
-    const notes = wrapUpStatus(state).book?.notes ?? {}
+): Array<{uid: string; name: string; text: string}> {
+    const notes = currentHistoryBook(state)?.notes ?? {}
     return state.members
         .map((member) => ({
             uid: member.id,
@@ -615,11 +475,13 @@ export function personalNotes(
 async function upsertCurrentHistory(
     code: string,
     state: ClubState,
-    patch: { ratings?: Record<string, number>; notes?: Record<string, string> },
+    uid: string,
+    patch: {stars?: number; note?: string},
 ): Promise<void> {
     const book = resolveCurrentBook(state)
     const historyId = currentHistoryId(state)
     if (!book || !historyId || !state.round) throw new Error('No current book.')
+    const roundId = state.round.id
     const historyRef = doc(clubRef(code), 'history', historyId)
     const existing = state.history.find((row) => row.id === historyId)
     const olid = book.olid ?? existing?.olid ?? ''
@@ -628,22 +490,31 @@ async function upsertCurrentHistory(
         subjects = await fetchWorkSubjects(olid)
         if (subjects.length === 0) subjects = [book.genre]
     }
-    await setDoc(
-        historyRef,
-        {
-            roundId: state.round.id,
+    await runTransaction(db, async (tx) => {
+        const snap = await tx.get(historyRef)
+        const row = snap.exists() ? snap.data() : {}
+        const ratings =
+            row.ratings && typeof row.ratings === 'object'
+                ? {...(row.ratings as Record<string, number>)}
+                : {}
+        const notes =
+            row.notes && typeof row.notes === 'object' ? {...(row.notes as Record<string, string>)} : {}
+        if (patch.stars != null) ratings[uid] = patch.stars
+        if (patch.note != null) notes[uid] = patch.note
+        const existingSubjects = Array.isArray(row.subjects) ? row.subjects.map(String) : []
+        tx.set(historyRef, {
+            roundId,
             olid,
             title: book.title,
             author: book.author,
             coverUrl: book.coverUrl,
-            genre: book.genre,
-            finishedAt: existing?.finishedAt ?? Date.now(),
-            ratings: patch.ratings ?? existing?.ratings ?? {},
-            notes: patch.notes ?? existing?.notes ?? {},
-            subjects,
-        },
-        {merge: true},
-    )
+            genre: asGenre(book.genre),
+            finishedAt: row.finishedAt ?? Date.now(),
+            ratings,
+            notes,
+            subjects: existingSubjects.length > 0 ? existingSubjects : subjects,
+        })
+    })
 }
 
 export async function rateCurrentBook(
@@ -652,10 +523,7 @@ export async function rateCurrentBook(
     uid: string,
     stars: number,
 ): Promise<void> {
-    const existing = wrapUpStatus(state).book
-    await upsertCurrentHistory(code, state, {
-        ratings: {...(existing?.ratings ?? {}), [uid]: stars},
-    })
+    await upsertCurrentHistory(code, state, uid, {stars})
 }
 
 export async function savePersonalNote(
@@ -664,25 +532,7 @@ export async function savePersonalNote(
     uid: string,
     note: string,
 ): Promise<void> {
-    const existing = wrapUpStatus(state).book
-    await upsertCurrentHistory(code, state, {
-        ratings: existing?.ratings ?? {},
-        notes: {...(existing?.notes ?? {}), [uid]: note.trim()},
-    })
-}
-
-
-async function copyGenreVotes(
-    code: string,
-    roundId: string,
-    votes: Record<string, Genre[]>,
-): Promise<void> {
-    const writes = Object.entries(votes)
-        .filter(([, genres]) => genres.length > 0)
-        .map(([userId, genres]) =>
-            setDoc(doc(clubRef(code), 'rounds', roundId, 'genreVotes', userId), {genres}),
-        )
-    await Promise.all(writes)
+    await upsertCurrentHistory(code, state, uid, {note: note.trim()})
 }
 
 async function loadPreviousRoundVotes(
@@ -703,8 +553,7 @@ async function loadPreviousRoundVotes(
     )
     const votes: Record<string, Genre[]> = {}
     for (const row of votesSnap.docs) {
-        const genres = row.data().genres
-        votes[row.id] = Array.isArray(genres) ? (genres as Genre[]) : []
+        votes[row.id] = parseGenreList(row.data().genres)
     }
     return votes
 }
@@ -718,14 +567,17 @@ export async function seedGenreVotesFromPreviousRound(
     )
     const already = new Set(
         currentSnap.docs
-            .filter((row) => Array.isArray(row.data().genres) && row.data().genres.length > 0)
+            .filter((row) => parseGenreList(row.data().genres).length > 0)
             .map((row) => row.id),
     )
     const previous = await loadPreviousRoundVotes(code, roundId)
-    const writes = Object.entries(previous)
-        .filter(([userId, genres]) => genres.length > 0 && !already.has(userId))
-        .map(([userId, genres]) =>
-            setDoc(doc(clubRef(code), 'rounds', roundId, 'genreVotes', userId), {genres}),
-        )
-    await Promise.all(writes)
+    const pending = Object.entries(previous).filter(
+        ([userId, genres]) => genres.length > 0 && !already.has(userId),
+    )
+    if (pending.length === 0) return
+    const batch = writeBatch(db)
+    for (const [userId, genres] of pending) {
+        batch.set(doc(clubRef(code), 'rounds', roundId, 'genreVotes', userId), {genres})
+    }
+    await batch.commit()
 }

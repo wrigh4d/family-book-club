@@ -15,6 +15,16 @@ export const GENRES = [
 
 export type Genre = (typeof GENRES)[number]
 
+const GENRE_SET = new Set<string>(GENRES)
+
+export function isGenre(value: unknown): value is Genre {
+    return typeof value === 'string' && GENRE_SET.has(value)
+}
+
+export function asGenre(value: unknown): Genre {
+    return isGenre(value) ? value : 'Literary'
+}
+
 export type RoundStatus = 'collecting' | 'presenting' | 'concluding'
 
 export type CurrentBook = {
@@ -22,7 +32,7 @@ export type CurrentBook = {
     title: string
     author: string
     coverUrl: string | null
-    genre: string
+    genre: Genre
 }
 
 export type Member = {
@@ -53,8 +63,6 @@ export type Nomination = {
     createdAt: number
 }
 
-export type RecVote = 'up' | 'down'
-
 export type RecSource = 'genre' | 'ratings'
 
 export type AppRecommendation = {
@@ -65,6 +73,16 @@ export type AppRecommendation = {
     genre: string
     why: string
     source: RecSource
+}
+
+export function recToCurrentBook(rec: AppRecommendation): CurrentBook {
+    return {
+        olid: rec.olid,
+        title: rec.title,
+        author: rec.author,
+        coverUrl: rec.coverUrl,
+        genre: asGenre(rec.genre),
+    }
 }
 
 export type Round = {
@@ -135,7 +153,6 @@ export type ClubState = {
     genreVotes: Record<string, Genre[]>
     nominations: Nomination[]
     history: HistoryBook[]
-    recVotes: Record<string, Partial<Record<RecSource, RecVote>>>
 }
 
 export type ScoredNomination = Nomination & {

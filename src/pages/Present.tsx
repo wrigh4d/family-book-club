@@ -1,50 +1,33 @@
-import {useEffect, useState} from 'react'
 import {Link, Navigate, useNavigate, useParams} from 'react-router-dom'
 import {Button, Cover, ErrorBanner} from '../components/ui'
-import {useAuth} from '../lib/auth'
-import {normalizeClubCode} from '../lib/codes'
 import {friendlyFirebaseError} from '../lib/errors'
+import {meetingRecsFromRound} from '../lib/recs'
 import {
+    currentHistoryBook,
     isOwner,
-    joinClub,
     personalNotes,
     resolveCurrentBook,
     startConcluding,
-    subscribeClub,
-    wrapUpStatus,
 } from '../lib/store'
 import {genreLean} from '../lib/suggestion'
-import {useAppRecommendations} from '../lib/useAppRecommendation'
+import {useClub} from '../lib/useClub'
 import type {AppRecommendation, ClubState} from '../types'
 
 export function Present() {
     const {code: rawCode = ''} = useParams()
-    const code = normalizeClubCode(rawCode)
-    const {uid, displayName, ready} = useAuth()
+    const {code, uid, displayName, ready, state, error, setError} = useClub(rawCode)
     const navigate = useNavigate()
-    const [state, setState] = useState<ClubState | null>(null)
-    const [error, setError] = useState<string | null>(null)
-
-    useEffect(() => {
-        if (!ready || !uid || !displayName || !code) return
-        let stop: (() => void) | undefined
-        joinClub(code, uid, displayName)
-            .then(() => {
-                stop = subscribeClub(code, setState, (err) =>
-                    setError(friendlyFirebaseError(err)),
-                )
-            })
-            .catch((err) => setError(friendlyFirebaseError(err)))
-        return () => stop?.()
-    }, [ready, uid, displayName, code])
-
     const lean = state ? genreLean(state.genreVotes) : []
-    const recs = useAppRecommendations(state)
+    const recs = meetingRecsFromRound(state)
     const current = state ? resolveCurrentBook(state) : null
-    const wrap = state ? wrapUpStatus(state) : null
+    const history = state ? currentHistoryBook(state) : null
     const owner = state && uid ? isOwner(state, uid) : false
 
-    if (!state) {
+    if (ready && !displayName) {
+        return <Navigate to={`/club/${code}`} replace/>
+    }
+
+    if (!ready || !state) {
         return (
             <div className="flex min-h-dvh items-center justify-center bg-ink px-4 text-cream">
                 <p>{error ?? 'Opening presenting mode…'}</p>
@@ -55,6 +38,11 @@ export function Present() {
     if (!current) {
         return <Navigate to={`/club/${code}`} replace/>
     }
+
+    const ratings = history ? Object.values(history.ratings) : []
+    const ratingLabel = ratings.length
+        ? `${(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)}/5`
+        : 'none yet'
 
     return (
         <div className="min-h-dvh bg-ink px-4 py-6 text-cream sm:px-10 sm:py-10">
@@ -75,32 +63,21 @@ export function Present() {
 
                 <section className="rounded-3xl bg-burgundy p-5 sm:p-8">
                     <p className="text-sm uppercase tracking-[0.2em] text-gold">Current book</p>
-                    {current ? (
-                        <div className="mt-4 flex flex-col gap-4 sm:flex-row">
-                            <Cover
-                                src={current.coverUrl}
-                                title={current.title}
-                                className="h-48 w-32 sm:h-64 sm:w-44"
-                            />
-                            <div>
-                                <h2 className="font-display text-3xl sm:text-5xl">{current.title}</h2>
-                                <p className="mt-1 text-lg text-cream/80">{current.author}</p>
-                                {wrap?.book ? (
-                                    <p className="mt-3 text-lg">
-                                        Ratings:{' '}
-                                        {Object.values(wrap.book.ratings).length
-                                            ? `${(
-                                                Object.values(wrap.book.ratings).reduce((a, b) => a + b, 0) /
-                                                Object.values(wrap.book.ratings).length
-                                            ).toFixed(1)}/5`
-                                            : 'none yet'}
-                                    </p>
-                                ) : null}
-                            </div>
+                    <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+                        <Cover
+                            src={current.coverUrl}
+                            title={current.title}
+                            className="h-48 w-32 sm:h-64 sm:w-44"
+                            loading="eager"
+                        />
+                        <div>
+                            <h2 className="font-display text-3xl sm:text-5xl">{current.title}</h2>
+                            <p className="mt-1 text-lg text-cream/80">{current.author}</p>
+                            {history ? (
+                                <p className="mt-3 text-lg">Ratings: {ratingLabel}</p>
+                            ) : null}
                         </div>
-                    ) : (
-                        <p className="mt-3 text-lg">No current book yet. Use Conclude to pick one.</p>
-                    )}
+                    </div>
                 </section>
                 <NoteTicker notes={personalNotes(state)}/>
 
@@ -133,11 +110,11 @@ export function Present() {
                 <PresentRec label="Most popular in this round’s genre" rec={recs.genre}/>
                 <PresentRec label="From past club ratings" rec={recs.ratings}/>
 
-                {owner ? (
+                {owner && uid ? (
                     <Button
                         type="button"
                         onClick={() =>
-                            startConcluding(code, state, uid!)
+                            startConcluding(code, state, uid)
                                 .then(() => navigate(`/club/${code}`))
                                 .catch((err) => setError(friendlyFirebaseError(err)))
                         }
@@ -150,11 +127,7 @@ export function Present() {
     )
 }
 
-function ShortlistTicker({
-                             books,
-                         }: {
-    books: ClubState['nominations']
-}) {
+function ShortlistTicker({books}: {books: ClubState['nominations']}) {
     if (books.length === 0) return null
     const loop = books.length === 1 ? books : [...books, ...books]
     return (
@@ -176,9 +149,9 @@ function ShortlistTicker({
 }
 
 function PresentRec({
-                        label,
-                        rec,
-                    }: {
+    label,
+    rec,
+}: {
     label: string
     rec: AppRecommendation | null
 }) {
@@ -203,9 +176,9 @@ function PresentRec({
 }
 
 function NoteTicker({
-                        notes,
-                    }: {
-    notes: Array<{ uid: string; name: string; text: string }>
+    notes,
+}: {
+    notes: Array<{uid: string; name: string; text: string}>
 }) {
     if (notes.length === 0) return null
     const loop = notes.length === 1 ? notes : [...notes, ...notes]

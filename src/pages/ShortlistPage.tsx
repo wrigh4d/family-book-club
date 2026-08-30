@@ -1,33 +1,14 @@
-import {useEffect, useState} from 'react'
 import {Link, Navigate, useNavigate, useParams} from 'react-router-dom'
 import {Nominate, Shortlist} from '../components/shortlistTools'
 import {Brand, Button, ErrorBanner, Page} from '../components/ui'
-import {useAuth} from '../lib/auth'
-import {normalizeClubCode} from '../lib/codes'
 import {friendlyFirebaseError} from '../lib/errors'
-import {addNomination, joinClub, resolveCurrentBook, subscribeClub, toggleAlreadyRead,} from '../lib/store'
-import type {ClubState} from '../types'
+import {addNomination, resolveCurrentBook, toggleAlreadyRead} from '../lib/store'
+import {useClub} from '../lib/useClub'
 
 export function ShortlistPage() {
     const {code: rawCode = ''} = useParams()
-    const code = normalizeClubCode(rawCode)
-    const {uid, displayName, ready, error} = useAuth()
+    const {code, uid, displayName, ready, state, error, setError} = useClub(rawCode)
     const navigate = useNavigate()
-    const [state, setState] = useState<ClubState | null>(null)
-    const [localError, setLocalError] = useState<string | null>(null)
-
-    useEffect(() => {
-        if (!ready || !uid || !displayName || !code) return
-        let stop: (() => void) | undefined
-        joinClub(code, uid, displayName)
-            .then(() => {
-                stop = subscribeClub(code, setState, (err) =>
-                    setLocalError(friendlyFirebaseError(err)),
-                )
-            })
-            .catch((err) => setLocalError(friendlyFirebaseError(err)))
-        return () => stop?.()
-    }, [ready, uid, displayName, code])
 
     if (!ready) {
         return (
@@ -53,7 +34,7 @@ export function ShortlistPage() {
         return (
             <Page>
                 <Brand/>
-                <p>{localError ?? 'Loading shortlist…'}</p>
+                <p>{error ?? 'Loading shortlist…'}</p>
             </Page>
         )
     }
@@ -72,14 +53,14 @@ export function ShortlistPage() {
                     Back to club
                 </Link>
             </header>
-            <ErrorBanner message={error ?? localError}/>
+            <ErrorBanner message={error}/>
             <Nominate
                 existingOlids={state.nominations.map((book) => book.olid)}
                 onAdd={async (hit) => {
                     try {
                         await addNomination(code, uid, displayName, hit)
                     } catch (err) {
-                        setLocalError(friendlyFirebaseError(err))
+                        setError(friendlyFirebaseError(err))
                     }
                 }}
             />
@@ -90,7 +71,7 @@ export function ShortlistPage() {
                     try {
                         await toggleAlreadyRead(code, id, uid, already)
                     } catch (err) {
-                        setLocalError(friendlyFirebaseError(err))
+                        setError(friendlyFirebaseError(err))
                     }
                 }}
             />
