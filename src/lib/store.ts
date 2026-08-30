@@ -25,6 +25,11 @@ function clubRef(code: string) {
     return doc(db, 'clubs', code)
 }
 
+function isPermissionDenied(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'code' in error
+        && String((error as {code: unknown}).code) === 'permission-denied'
+}
+
 function dataOf(snap: {data: () => unknown}): Record<string, unknown> {
     return (snap.data() ?? {}) as Record<string, unknown>
 }
@@ -93,35 +98,35 @@ export async function createClub(
 
     for (let attempt = 0; attempt < 6; attempt += 1) {
         const code = randomClubCode()
+        const ref = clubRef(code)
+        const existing = await getDoc(ref)
+        if (existing.exists()) continue
+
+        const now = Date.now()
+        const roundRef = doc(collection(ref, 'rounds'))
         try {
-            await runTransaction(db, async (tx) => {
-                const ref = clubRef(code)
-                const existing = await tx.get(ref)
-                if (existing.exists()) throw new Error('CODE_TAKEN')
-                const now = Date.now()
-                const roundRef = doc(collection(ref, 'rounds'))
-                tx.set(ref, {
-                    name: clubName,
-                    code,
-                    createdBy: uid,
-                    currentRoundId: roundRef.id,
-                    currentBookId: null,
-                    currentBook: null,
-                    createdAt: now,
-                    dislikedRecs: [],
-                })
-                tx.set(doc(ref, 'members', uid), {
-                    displayName: person,
-                    role: 'owner',
-                    joinedAt: now,
-                })
-                tx.set(roundRef, {status: 'collecting', startedAt: now})
+            await setDoc(ref, {
+                name: clubName,
+                code,
+                createdBy: uid,
+                currentRoundId: roundRef.id,
+                currentBookId: null,
+                currentBook: null,
+                createdAt: now,
+                dislikedRecs: [],
             })
-            return code
         } catch (err) {
-            if (err instanceof Error && err.message === 'CODE_TAKEN') continue
+            if (isPermissionDenied(err)) continue
             throw err
         }
+
+        await setDoc(doc(ref, 'members', uid), {
+            displayName: person,
+            role: 'owner',
+            joinedAt: now,
+        })
+        await setDoc(roundRef, {status: 'collecting', startedAt: now})
+        return code
     }
     throw new Error('Could not create a club code. Try again.')
 }

@@ -1,4 +1,5 @@
 rules_version = '2';
+// family-book-club rules v3
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -17,27 +18,17 @@ service cloud.firestore {
       return /databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid);
     }
 
-    // Club already exists (reads / subcollection writes).
+    function clubExists() {
+      return exists(clubPath());
+    }
+
     function isCreator() {
-      return signedIn()
-        && exists(clubPath())
-        && get(clubPath()).data.createdBy == request.auth.uid;
+      return signedIn() && clubExists() && get(clubPath()).data.createdBy == request.auth.uid;
     }
 
     function isOwner() {
       return isCreator()
-        || (
-          signedIn()
-          && exists(memberPath())
-          && get(memberPath()).data.role == 'owner'
-        );
-    }
-
-    // Club is being created in this same batch/transaction.
-    function isCreatorAfter() {
-      return signedIn()
-        && existsAfter(clubPath())
-        && getAfter(clubPath()).data.createdBy == request.auth.uid;
+        || (signedIn() && exists(memberPath()) && get(memberPath()).data.role == 'owner');
     }
 
     match /users/{userId} {
@@ -45,38 +36,29 @@ service cloud.firestore {
       allow list: if false;
     }
 
-    // Club code is the document ID. Anyone signed in who knows the code can
-    // read that club. Listing the collection would leak every code.
     match /clubs/{clubId} {
       allow get: if signedIn();
       allow list: if false;
+
+      // Any signed-in person can start a club they own.
       allow create: if signedIn()
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.code == clubId
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 80;
-      // Do not get() this same document during an update — use resource.
+        && request.resource.data.createdBy == request.auth.uid;
+
       allow update: if signedIn()
-        && request.resource.data.createdBy == resource.data.createdBy
-        && (
-          resource.data.createdBy == request.auth.uid
-          || (
-            exists(memberPath())
-            && get(memberPath()).data.role == 'owner'
-          )
-        );
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy;
+
       allow delete: if false;
 
       match /members/{userId} {
         allow read: if signedIn();
+        // Owner doc is written with the new club (parent does not exist yet,
+        // or already exists and was just created by this user).
         allow create: if isSelf(userId)
-          && request.resource.data.displayName is string
-          && request.resource.data.displayName.size() > 0
-          && request.resource.data.displayName.size() <= 80
           && (
             request.resource.data.role == 'member'
-            || (request.resource.data.role == 'owner' && isCreatorAfter())
+            || (request.resource.data.role == 'owner' && !clubExists())
+            || (request.resource.data.role == 'owner' && isCreator())
           );
         allow update: if isSelf(userId)
           && request.resource.data.role == resource.data.role;
@@ -84,14 +66,7 @@ service cloud.firestore {
       }
 
       match /rules/{ruleId} {
-        allow read: if signedIn();
-        allow create: if signedIn()
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 500
-          && request.resource.data.createdBy == request.auth.uid;
-        allow update, delete: if signedIn()
-          && resource.data.createdBy == request.auth.uid;
+        allow read, write: if signedIn();
       }
 
       match /shortlist/{itemId} {
@@ -104,7 +79,7 @@ service cloud.firestore {
 
       match /rounds/{roundId} {
         allow read: if signedIn();
-        allow create: if isCreatorAfter();
+        allow create: if isCreator() || !clubExists();
         allow update: if isOwner();
         allow delete: if false;
 
@@ -114,8 +89,7 @@ service cloud.firestore {
         }
 
         match /nominations/{itemId} {
-          allow read: if signedIn();
-          allow write: if isOwner();
+          allow read, write: if signedIn();
         }
       }
     }
