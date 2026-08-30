@@ -377,9 +377,9 @@ function snapshotFromState(
             author: book.author,
             coverUrl: book.coverUrl,
         })),
-        genreRecommendation: genreRec ?? undefined,
+        genreRecommendation: genreRec ?? null,
         ratingsRecommendation:
-            recs?.ratingsRecommendation ?? state.round?.ratingsRecommendation ?? undefined,
+            recs?.ratingsRecommendation ?? state.round?.ratingsRecommendation ?? null,
     }
 }
 

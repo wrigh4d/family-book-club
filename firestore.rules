@@ -1,5 +1,5 @@
 rules_version = '2';
-// family-book-club rules v3
+// family-book-club rules v4
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -10,44 +10,42 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
-    function clubPath() {
-      return /databases/$(database)/documents/clubs/$(clubId);
-    }
-
-    function memberPath() {
-      return /databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid);
-    }
-
-    function clubExists() {
-      return exists(clubPath());
-    }
-
-    function isCreator() {
-      return signedIn() && clubExists() && get(clubPath()).data.createdBy == request.auth.uid;
-    }
-
-    function isOwner() {
-      return isCreator()
-        || (signedIn() && exists(memberPath()) && get(memberPath()).data.role == 'owner');
-    }
-
     match /users/{userId} {
       allow get, write: if isSelf(userId);
       allow list: if false;
     }
 
     match /clubs/{clubId} {
+      function clubDoc() {
+        return /databases/$(database)/documents/clubs/$(clubId);
+      }
+
+      function memberDoc() {
+        return /databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid);
+      }
+
+      function isCreator() {
+        return signedIn()
+          && exists(clubDoc())
+          && get(clubDoc()).data.createdBy == request.auth.uid;
+      }
+
+      function isOwner() {
+        return isCreator()
+          || (
+            signedIn()
+            && exists(memberDoc())
+            && get(memberDoc()).data.role == 'owner'
+          );
+      }
+
       allow get: if signedIn();
       allow list: if false;
-
-      // Any signed-in person can start a club they own.
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid;
-
       allow update: if signedIn()
         && resource.data.createdBy == request.auth.uid
         && request.resource.data.createdBy == resource.data.createdBy;
-
       allow delete: if false;
 
       match /members/{userId} {
