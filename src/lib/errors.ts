@@ -1,15 +1,38 @@
+export function firebaseErrorCode(error: unknown): string {
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+        return String((error as {code: unknown}).code)
+    }
+    return ''
+}
+
+export function shouldFallbackToGoogleRedirect(code: string): boolean {
+    return (
+        code === 'auth/popup-blocked' ||
+        code === 'auth/operation-not-supported-in-this-environment'
+    )
+}
+
 export function friendlyFirebaseError(error: unknown): string {
-    const code =
-        typeof error === 'object' && error !== null && 'code' in error
-            ? String((error as { code: unknown }).code)
-            : ''
+    const code = firebaseErrorCode(error)
     const message =
         typeof error === 'object' && error !== null && 'message' in error
-            ? String((error as { message: unknown }).message)
+            ? String((error as {message: unknown}).message)
             : ''
 
     if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
-        return 'Anonymous sign-in is not enabled yet. In Firebase: Authentication → Sign-in method → Anonymous → Enable.'
+        return 'Google sign-in is not enabled yet. In Firebase: Authentication → Sign-in method → Google → Enable.'
+    }
+    if (code === 'auth/unauthorized-domain') {
+        return 'This site is not an authorized domain. In Firebase: Authentication → Settings → Authorized domains, add localhost and your GitHub Pages host (YOUR_USERNAME.github.io).'
+    }
+    if (code === 'auth/popup-blocked') {
+        return 'The sign-in popup was blocked. Allow popups for this site, or try again.'
+    }
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        return 'Sign-in was cancelled.'
+    }
+    if (code === 'auth/account-exists-with-different-credential') {
+        return 'That email is already used with a different sign-in method.'
     }
     if (
         code === 'failed-precondition' ||

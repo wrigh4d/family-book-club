@@ -106,7 +106,7 @@ export function Present() {
     const [paused, setPaused] = useState(false)
     const hasRight = views.length > 0 || recs.length > 0
 
-    if (ready && !displayName) {
+    if (ready && (!uid || !displayName)) {
         return <Navigate to={`/club/${code}`} replace/>
     }
 

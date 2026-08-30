@@ -7,7 +7,16 @@ import {joinClub, subscribeClub} from './store'
 
 export function useClub(rawCode: string) {
     const code = normalizeClubCode(rawCode)
-    const {uid, displayName, ready, error: authError, setDisplayName} = useAuth()
+    const {
+        uid,
+        displayName,
+        suggestedName,
+        ready,
+        error: authError,
+        setDisplayName,
+        signInWithGoogle,
+        signOut,
+    } = useAuth()
     const [state, setState] = useState<ClubState | null>(null)
     const [localError, setLocalError] = useState<string | null>(null)
 
@@ -37,8 +46,11 @@ export function useClub(rawCode: string) {
         displayName,
         ready,
         state,
+        suggestedName,
         error: localError ?? authError,
         setError: setLocalError,
         setDisplayName,
+        signInWithGoogle,
+        signOut,
     }
 }

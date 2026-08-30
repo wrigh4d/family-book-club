@@ -4,7 +4,7 @@ import {ConcludePicker} from '../components/ConcludePicker'
 import {CurrentBookCard} from '../components/CurrentBookCard'
 import {FirstBookSetup} from '../components/FirstBookSetup'
 import {GenreVotes} from '../components/GenreVotes'
-import {Accordion, AccentRule, Brand, Button, buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Field, NameForm, Page, TextInput} from '../components/ui'
+import {Accordion, AccentRule, Brand, Button, buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Field, GoogleSignInCard, NameForm, Page, SessionBar, TextButton, TextInput} from '../components/ui'
 import {friendlyFirebaseError} from '../lib/errors'
 import {meetingRecsFromRound} from '../lib/recs'
 import {
@@ -30,14 +30,18 @@ export function ClubHome() {
         code,
         uid,
         displayName,
+        suggestedName,
         ready,
         state,
         error,
         setError,
         setDisplayName,
+        signInWithGoogle,
+        signOut,
     } = useClub(rawCode)
     const navigate = useNavigate()
     const [copied, setCopied] = useState(false)
+    const [authBusy, setAuthBusy] = useState(false)
     const seededRoundId = useRef<string | null>(null)
 
     useEffect(() => {
@@ -53,6 +57,23 @@ export function ClubHome() {
         /([^:]\/)\/+/g,
         '$1',
     )
+
+    async function handleGoogle() {
+        setError(null)
+        setAuthBusy(true)
+        try {
+            await signInWithGoogle()
+        } catch (err) {
+            setError(friendlyFirebaseError(err))
+        } finally {
+            setAuthBusy(false)
+        }
+    }
+
+    async function handleSignOut() {
+        await signOut()
+        navigate('/')
+    }
 
     async function copyInvite() {
         try {
@@ -72,6 +93,22 @@ export function ClubHome() {
         )
     }
 
+    if (!uid) {
+        return (
+            <Page>
+                <header className="flex flex-col gap-3">
+                    <div>
+                        <Brand/>
+                        <h1 className="font-display text-3xl">Join this club</h1>
+                    </div>
+                    <AccentRule/>
+                </header>
+                <ErrorBanner message={error}/>
+                <GoogleSignInCard onSignIn={() => void handleGoogle()} busy={authBusy}/>
+            </Page>
+        )
+    }
+
     if (!displayName) {
         return (
             <Page>
@@ -83,9 +120,15 @@ export function ClubHome() {
                     <AccentRule/>
                 </header>
                 <ErrorBanner message={error}/>
+                <p className="text-sm text-ink/70">
+                    Signed in with Google
+                    {' · '}
+                    <TextButton onClick={() => void handleSignOut()}>Sign out</TextButton>
+                </p>
                 <Card>
                     <NameForm
                         busyLabel="Join club"
+                        defaultName={suggestedName ?? ''}
                         onSave={async (name) => {
                             await setDisplayName(name)
                         }}
@@ -124,6 +167,7 @@ export function ClubHome() {
                         </Button>
                     }
                 />
+                <SessionBar name={displayName} onSignOut={() => void handleSignOut()}/>
                 <ErrorBanner message={error}/>
                 {owner ? (
                     <FirstBookSetup
@@ -163,6 +207,7 @@ export function ClubHome() {
                     </>
                 }
             />
+            <SessionBar name={displayName} onSignOut={() => void handleSignOut()}/>
             <ErrorBanner message={error}/>
             <ClubInformation
                 members={state.members}

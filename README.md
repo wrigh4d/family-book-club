@@ -35,38 +35,50 @@ presenting once the owner has started it.
 
 ## What it does
 
-- Create / join a club with a display name + code (no email)
+- Sign in with Google, then create / join a club with a display name + code
 - Rules board (honor system)
 - Persistent club shortlist, including “I’ve already read this”
 - Personal notes on the current book, shown in presenting if anyone wrote one
 - Meeting recs from Open Library (subjects, popularity, past ratings/tags)
 - Owner-only phase changes
 
-Identity is per device (Firebase anonymous auth). Clearing the browser or switching phones is a new person until
-accounts exist.
+Identity is a Google account (Firebase Auth). The same Google account on phone and PC is the same club member. A club
+nickname is still stored separately (`users/{uid}`) so the roster can say “Dad” instead of a Gmail name.
+
+Local Vite and GitHub Pages share **one** Firebase project. GitHub Pages does **not** publish Firestore rules.
 
 ## Firebase
 
-The public web config is in the project. You still need Anonymous auth and Firestore.
+The public web config is in the project. You still need Google sign-in and Firestore. Incomplete OAuth branding (missing app domain) is fine while Audience is **Testing**.
 
-### Anonymous sign-in
+**[Google Auth Platform → Audience](https://console.cloud.google.com/auth/audience?project=familybookclub-52781)**
+
+1. User type **External**, publishing status **Testing**.
+2. Add **every family Gmail** as a test user (yours first). Anyone not listed sees “Access blocked.”
 
 **[Authentication → Sign-in method](https://console.firebase.google.com/project/familybookclub-52781/authentication/providers)**
 
-1. **Get started** if you see it.
-2. **Anonymous** → On → Save.
+1. **Google** → Enable. Firebase fills Web SDK configuration; you do not need the client secret.
+2. **Anonymous** → Disable.
 
-### Firestore
+**[Authentication → Settings → Authorized domains](https://console.firebase.google.com/project/familybookclub-52781/authentication/settings)**
 
-**[Firestore Database](https://console.firebase.google.com/project/familybookclub-52781/firestore)**
+Add:
 
-1. **Create database**.
-2. Pick a location and create.
-3. Deploy the rules in `firestore.rules` (Firebase console → Firestore → Rules, or `firebase deploy --only firestore:rules`). Do not leave the database in test mode: those rules let any signed-in user list every club and overwrite club data.
+- `localhost` (usually already there)
+- `familybookclub-52781.firebaseapp.com` (already there)
+- `YOUR_USERNAME.github.io` (hostname only — no `https://`, no `/family-book-club`)
 
-Club codes are document IDs. Anyone who knows a code can join; the rules forbid listing `/clubs`, so codes cannot be enumerated. Ownership (`createdBy` / owner role) cannot be taken over from a member account.
+**[Firestore](https://console.firebase.google.com/project/familybookclub-52781/firestore)**
 
-On the live site, add `YOUR_USERNAME.github.io` under Authentication → Settings → **Authorized domains**.
+1. Create the database if it does not exist.
+2. Publish `firestore.rules` from this repo (console → Rules, or `firebase deploy --only firestore:rules`). Pages deploys do not do this.
+3. Delete old `users` and `clubs` data if any (anonymous member ids will not match Google UIDs).
+4. **Authentication → Users:** delete leftover anonymous users.
+
+Rules require a Google-signed-in user. Club writes require membership. Round create during club creation uses `existsAfter` so the owner batch succeeds.
+
+Club codes are document IDs. Anyone who knows a code can join; the rules forbid listing `/clubs`. Owner is `createdBy` or `members/{uid}.role == 'owner'`. Members cannot change their own role.
 
 Do not commit `serviceAccountKey.json` or the Admin SDK. The web `apiKey` / `projectId` config is enough.
 
@@ -91,7 +103,7 @@ Repo name `family-book-club` matches `VITE_BASE` in `.github/workflows/deploy.ym
 
 ## Stack
 
-Vite, React, TypeScript, Tailwind, Firebase Auth (anonymous) + Firestore, Open Library.
+Vite, React, TypeScript, Tailwind, Firebase Auth (Google) + Firestore, Open Library.
 
 ## Recs (at Present, not between meetings)
 

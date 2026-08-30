@@ -1,7 +1,7 @@
 import {useEffect} from 'react'
-import {Link, Navigate, useNavigate, useParams} from 'react-router-dom'
+import {Link, Navigate, useParams} from 'react-router-dom'
 import {Nominate, Shortlist} from '../components/shortlistTools'
-import {Brand, Button, buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Page} from '../components/ui'
+import {Brand, buttonClass, Card, CardTitle, ClubHeader, ErrorBanner, Page} from '../components/ui'
 import {friendlyFirebaseError} from '../lib/errors'
 import {availableShortlist} from '../lib/bookStatus'
 import {addNomination, pruneShortlist, removeFromShortlist, resolveCurrentBook, toggleAlreadyRead} from '../lib/store'
@@ -10,7 +10,6 @@ import {useClub} from '../lib/useClub'
 export function ShortlistPage() {
     const {code: rawCode = ''} = useParams()
     const {code, uid, displayName, ready, state, error, setError} = useClub(rawCode)
-    const navigate = useNavigate()
 
     useEffect(() => {
         if (!state) return
@@ -25,16 +24,8 @@ export function ShortlistPage() {
         )
     }
 
-    if (!displayName) {
-        return (
-            <Page>
-                <Brand/>
-                <p>Join the club from the home page first.</p>
-                <Button variant="ghost" onClick={() => navigate(`/club/${code}`)}>
-                    Back to club
-                </Button>
-            </Page>
-        )
+    if (!uid || !displayName) {
+        return <Navigate to={`/club/${code}`} replace/>
     }
 
     if (!state || !uid) {

@@ -1,9 +1,10 @@
 rules_version = '2';
-// family-book-club rules v4
+// family-book-club rules v5
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     function isSelf(userId) {
@@ -39,12 +40,15 @@ service cloud.firestore {
           );
       }
 
+      function isMember() {
+        return signedIn() && exists(memberDoc());
+      }
+
       allow get: if signedIn();
       allow list: if false;
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid;
-      allow update: if signedIn()
-        && resource.data.createdBy == request.auth.uid
+      allow update: if isOwner()
         && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if false;
 
@@ -53,7 +57,11 @@ service cloud.firestore {
         allow create: if isSelf(userId)
           && (
             request.resource.data.role == 'member'
-            || request.resource.data.role == 'owner'
+            || (
+              request.resource.data.role == 'owner'
+              && existsAfter(clubDoc())
+              && getAfter(clubDoc()).data.createdBy == request.auth.uid
+            )
           );
         allow update: if isSelf(userId)
           && request.resource.data.role == resource.data.role;
@@ -61,20 +69,29 @@ service cloud.firestore {
       }
 
       match /rules/{ruleId} {
-        allow read, write: if signedIn();
+        allow read: if signedIn();
+        allow write: if isMember();
       }
 
       match /shortlist/{itemId} {
-        allow read, write: if signedIn();
+        allow read: if signedIn();
+        allow write: if isMember();
       }
 
       match /history/{itemId} {
-        allow read, write: if signedIn();
+        allow read: if signedIn();
+        allow write: if isMember();
       }
 
       match /rounds/{roundId} {
         allow read: if signedIn();
-        allow create: if signedIn();
+        allow create: if isOwner()
+          || (
+            signedIn()
+            && existsAfter(clubDoc())
+            && getAfter(clubDoc()).data.createdBy == request.auth.uid
+            && existsAfter(memberDoc())
+          );
         allow update: if isOwner();
         allow delete: if false;
 
@@ -84,7 +101,8 @@ service cloud.firestore {
         }
 
         match /nominations/{itemId} {
-          allow read, write: if signedIn();
+          allow read: if signedIn();
+          allow write: if isMember();
         }
       }
     }

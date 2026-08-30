@@ -210,9 +210,11 @@ export function ErrorBanner({message}: { message: string | null }) {
 export function NameForm({
                              onSave,
                              busyLabel = 'Continue',
+                             defaultName = '',
                          }: {
     onSave: (name: string) => Promise<void>
     busyLabel?: string
+    defaultName?: string
 }) {
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -224,10 +226,49 @@ export function NameForm({
     return (
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
             <Field label="Your name">
-                <TextInput name="name" autoComplete="name" placeholder="Nick" required maxLength={80}/>
+                <TextInput
+                    name="name"
+                    autoComplete="name"
+                    placeholder="Nick"
+                    defaultValue={defaultName}
+                    required
+                    maxLength={80}
+                />
             </Field>
             <Button type="submit">{busyLabel}</Button>
         </form>
+    )
+}
+
+export function GoogleSignInCard({
+    onSignIn,
+    busy = false,
+    title = 'Sign in to continue',
+    body = 'Use the same Google account on your phone and computer so you only join the club once.',
+}: {
+    onSignIn: () => void
+    busy?: boolean
+    title?: string
+    body?: string
+}) {
+    return (
+        <Card>
+            <h2 className="mb-3 font-display text-2xl">{title}</h2>
+            <p className="mb-4 text-sm text-ink/70">{body}</p>
+            <Button type="button" onClick={onSignIn} disabled={busy}>
+                Continue with Google
+            </Button>
+        </Card>
+    )
+}
+
+export function SessionBar({name, onSignOut}: {name: string; onSignOut: () => void}) {
+    return (
+        <p className="text-sm text-ink/70">
+            Signed in as <span className="font-semibold text-ink">{name}</span>
+            {' · '}
+            <TextButton onClick={onSignOut}>Sign out</TextButton>
+        </p>
     )
 }
 
