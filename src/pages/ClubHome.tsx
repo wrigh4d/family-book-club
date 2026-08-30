@@ -377,7 +377,7 @@ function RoundPanel({
 
     return (
         <>
-            <CurrentBookCard code={code} uid={uid} state={state} onError={onError}/>
+            <CurrentBookCard code={code} uid={uid} state={state} owner={owner} onError={onError}/>
             <GenreVotes
                 uid={uid}
                 members={state.members}

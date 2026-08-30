@@ -1,4 +1,4 @@
-import type {ClubState, Nomination} from '../types'
+import type {ClubState, HistoryBook, Nomination} from '../types'
 
 export type ClubBookStatus = 'current' | 'history' | 'shortlist' | null
 
@@ -57,4 +57,14 @@ export function staleShortlist(state: ClubState): Nomination[] {
         const status = clubBookStatus(state, book)
         return status === 'current' || status === 'history'
     })
+}
+
+export function historyDocId(olid: string): string {
+    return `book-${olid.replaceAll('/', '_')}`
+}
+
+export function unfinishedHistoryForCurrent(state: ClubState): HistoryBook[] {
+    const current = currentRef(state)
+    if (!current) return []
+    return state.history.filter((row) => isSameClubBook(row, current))
 }

@@ -1,5 +1,11 @@
 import {describe, expect, it} from 'vitest'
-import {availableShortlist, clubBookStatus, clubBookStatusLabel} from './bookStatus'
+import {
+    availableShortlist,
+    clubBookStatus,
+    clubBookStatusLabel,
+    historyDocId,
+    unfinishedHistoryForCurrent,
+} from './bookStatus'
 import type {ClubState, Nomination} from '../types'
 
 function nomination(partial: Partial<Nomination> & Pick<Nomination, 'id' | 'olid' | 'title'>): Nomination {
@@ -114,5 +120,39 @@ describe('clubBookStatus', () => {
                 title: 'Harry Potter and the Chamber of Secrets',
             }),
         ).toBe('shortlist')
+    })
+})
+
+describe('unfinishedHistoryForCurrent', () => {
+    it('returns only history for the unfinished current book', () => {
+        const club = state({
+            current: {olid: '/works/OL1', title: 'Dune'},
+            history: [
+                {olid: '/works/OL1', title: 'Dune'},
+                {olid: '/works/OL2', title: 'Emma'},
+            ],
+        })
+        expect(unfinishedHistoryForCurrent(club).map((row) => row.olid)).toEqual(['/works/OL1'])
+    })
+
+    it('is empty when the current book has not been rated or noted', () => {
+        const club = state({
+            current: {olid: '/works/OL1', title: 'Dune'},
+            history: [{olid: '/works/OL2', title: 'Emma'}],
+        })
+        expect(unfinishedHistoryForCurrent(club)).toEqual([])
+    })
+
+    it('builds the same history document id the store writes', () => {
+        expect(historyDocId('/works/OL82563W')).toBe('book-_works_OL82563W')
+    })
+
+    it('treats an abandoned current book as unknown once its history is gone', () => {
+        const abandoned = state({
+            current: null,
+            history: [{olid: '/works/OL2', title: 'Emma'}],
+        })
+        expect(clubBookStatus(abandoned, {olid: '/works/OL1', title: 'Dune'})).toBeNull()
+        expect(clubBookStatus(abandoned, {olid: '/works/OL2', title: 'Emma'})).toBe('history')
     })
 })

@@ -4,6 +4,7 @@ import {
     arrayUnion,
     collection,
     deleteDoc,
+    deleteField,
     doc,
     getDoc,
     getDocs,
@@ -15,7 +16,14 @@ import {
     writeBatch,
 } from 'firebase/firestore'
 import {asGenre, type AppRecommendation, type Club, type ClubState, type CurrentBook, type Genre, type HistoryBook, type Member, type Nomination, type Round, type Rule, type SuggestionSnapshot} from '../types'
-import {assertCanBeNextBook, assertCanJoinShortlist, findMatchingClubBook, staleShortlist} from './bookStatus'
+import {
+    assertCanBeNextBook,
+    assertCanJoinShortlist,
+    findMatchingClubBook,
+    historyDocId,
+    staleShortlist,
+    unfinishedHistoryForCurrent,
+} from './bookStatus'
 import {asClub, asHistory, asMember, asNomination, asRound, asRule, parseGenreList} from './clubParse'
 import {randomClubCode} from './codes'
 import {db} from './firebase'
@@ -66,7 +74,7 @@ export function resolveCurrentBook(state: ClubState): CurrentBook | null {
 export function currentHistoryId(state: ClubState): string | null {
     const book = resolveCurrentBook(state)
     if (!book?.olid) return null
-    return `book-${book.olid.replaceAll('/', '_')}`
+    return historyDocId(book.olid)
 }
 
 export function currentHistoryBook(state: ClubState): HistoryBook | null {
@@ -463,6 +471,45 @@ export async function setStartingBook(
         currentBook: toCurrentBook(book),
         currentBookId: book.olid || null,
     })
+}
+
+export async function changeCurrentBook(
+    code: string,
+    state: ClubState,
+    uid: string,
+    book: CurrentBook,
+): Promise<void> {
+    assertOwner(state, uid)
+    if (!resolveCurrentBook(state)) throw new Error('No current book.')
+    if (state.round && state.round.status !== 'collecting') {
+        throw new Error('Finish or leave presenting before changing the current book.')
+    }
+    assertCanBeNextBook(state, book)
+
+    const batch = writeBatch(db)
+    const historyIds = new Set<string>()
+    const currentId = currentHistoryId(state)
+    if (currentId) historyIds.add(currentId)
+    for (const row of unfinishedHistoryForCurrent(state)) {
+        historyIds.add(row.id)
+    }
+    for (const id of historyIds) {
+        batch.delete(doc(clubRef(code), 'history', id))
+    }
+
+    const listed = findMatchingClubBook(book, state.nominations)
+    if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
+
+    batch.update(clubRef(code), {
+        currentBook: toCurrentBook(book),
+        currentBookId: book.olid || null,
+    })
+    if (state.round?.selectedNominationId) {
+        batch.update(doc(clubRef(code), 'rounds', state.round.id), {
+            selectedNominationId: deleteField(),
+        })
+    }
+    await batch.commit()
 }
 
 export async function pickNextBook(
