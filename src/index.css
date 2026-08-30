@@ -1,82 +1,82 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Fraunces", Georgia, serif;
-  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
-  --color-ink: #1c1612;
-  --color-cream: #f3eee4;
-  --color-paper: #fffaf3;
-  --color-rule: #e4d9c6;
-  --color-burgundy: #7a2e24;
-  --color-burgundy-dark: #5c211b;
-  --color-gold: #b0894f;
-  --color-moss: #4d5b43;
+    --font-display: "Fraunces", Georgia, serif;
+    --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+    --color-ink: #1c1612;
+    --color-cream: #f3eee4;
+    --color-paper: #fffaf3;
+    --color-rule: #e4d9c6;
+    --color-burgundy: #7a2e24;
+    --color-burgundy-dark: #5c211b;
+    --color-gold: #b0894f;
+    --color-moss: #4d5b43;
 }
 
 html,
 body,
 #root {
-  min-height: 100%;
+    min-height: 100%;
 }
 
 body {
-  margin: 0;
-  background: var(--color-cream);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
+    margin: 0;
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
 }
 
 button,
 input,
 select,
 textarea {
-  font: inherit;
+    font: inherit;
 }
 
 button:not(:disabled),
 a[href],
 select:not(:disabled),
 summary {
-  cursor: pointer;
+    cursor: pointer;
 }
 
 button:disabled {
-  cursor: not-allowed;
+    cursor: not-allowed;
 }
 
 @keyframes note-scroll {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-50%);
-  }
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-50%);
+    }
 }
 
 .note-ticker {
-  overflow: hidden;
-  max-height: 9rem;
+    overflow: hidden;
+    max-height: 9rem;
 }
 
 .note-ticker-track {
-  animation: note-scroll 28s linear infinite;
+    animation: note-scroll 28s linear infinite;
 }
 
 @keyframes shortlist-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
 }
 
 .shortlist-ticker {
-  overflow: hidden;
+    overflow: hidden;
 }
 
 .shortlist-ticker-track {
-  display: flex;
-  width: max-content;
-  animation: shortlist-scroll 40s linear infinite;
+    display: flex;
+    width: max-content;
+    animation: shortlist-scroll 40s linear infinite;
 }
