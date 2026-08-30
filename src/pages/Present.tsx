@@ -1,17 +1,27 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Cover, ErrorBanner } from '../components/ui'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Button, Cover, ErrorBanner } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { normalizeClubCode } from '../lib/codes'
 import { friendlyFirebaseError } from '../lib/errors'
-import { joinClub, subscribeClub } from '../lib/store'
-import { genreLean, scoreNominations } from '../lib/suggestion'
-import type { ClubState } from '../types'
+import {
+  isOwner,
+  joinClub,
+  personalNotes,
+  resolveCurrentBook,
+  startConcluding,
+  subscribeClub,
+  wrapUpStatus,
+} from '../lib/store'
+import { genreLean } from '../lib/suggestion'
+import { useAppRecommendations } from '../lib/useAppRecommendation'
+import type { AppRecommendation, ClubState } from '../types'
 
 export function Present() {
   const { code: rawCode = '' } = useParams()
   const code = normalizeClubCode(rawCode)
   const { uid, displayName, ready } = useAuth()
+  const navigate = useNavigate()
   const [state, setState] = useState<ClubState | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,34 +38,11 @@ export function Present() {
     return () => stop?.()
   }, [ready, uid, displayName, code])
 
-  const live = useMemo(
-    () =>
-      state
-        ? scoreNominations(state.nominations, state.genreVotes, state.history)
-        : [],
-    [state],
-  )
   const lean = state ? genreLean(state.genreVotes) : []
-  const locked = state?.round?.status === 'locked' || state?.round?.status === 'reading'
-  const featured = locked && state?.round?.suggestion
-    ? {
-        title: state.round.suggestion.title,
-        author: state.round.suggestion.author,
-        coverUrl: state.round.suggestion.coverUrl,
-        why: state.round.suggestion.why,
-      }
-    : live[0]
-      ? {
-          title: live[0].title,
-          author: live[0].author,
-          coverUrl: live[0].coverUrl,
-          why: live[0].why,
-        }
-      : null
-  const rest =
-    locked && state?.round?.suggestion
-      ? state.round.suggestion.shortlist
-      : live.slice(1)
+  const recs = useAppRecommendations(state)
+  const current = state ? resolveCurrentBook(state) : null
+  const wrap = state ? wrapUpStatus(state) : null
+  const owner = state && uid ? isOwner(state, uid) : false
 
   if (!state) {
     return (
@@ -63,6 +50,10 @@ export function Present() {
         <p>{error ?? 'Opening presenting mode…'}</p>
       </div>
     )
+  }
+
+  if (!current) {
+    return <Navigate to={`/club/${code}`} replace />
   }
 
   return (
@@ -73,11 +64,45 @@ export function Present() {
             <p className="text-sm uppercase tracking-[0.2em] text-gold">Family Book Club</p>
             <h1 className="font-display text-4xl sm:text-6xl">{state.club.name}</h1>
           </div>
-          <Link className="text-sm text-gold underline" to={`/club/${code}`}>
-            Back to club
+          <Link
+            className="text-sm text-gold underline decoration-gold/40 underline-offset-2 transition hover:text-cream hover:decoration-cream"
+            to={`/club/${code}`}
+          >
+            Back
           </Link>
         </header>
         <ErrorBanner message={error} />
+
+        <section className="rounded-3xl bg-burgundy p-5 sm:p-8">
+          <p className="text-sm uppercase tracking-[0.2em] text-gold">Current book</p>
+          {current ? (
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+              <Cover
+                src={current.coverUrl}
+                title={current.title}
+                className="h-48 w-32 sm:h-64 sm:w-44"
+              />
+              <div>
+                <h2 className="font-display text-3xl sm:text-5xl">{current.title}</h2>
+                <p className="mt-1 text-lg text-cream/80">{current.author}</p>
+                {wrap?.book ? (
+                  <p className="mt-3 text-lg">
+                    Ratings:{' '}
+                    {Object.values(wrap.book.ratings).length
+                      ? `${(
+                          Object.values(wrap.book.ratings).reduce((a, b) => a + b, 0) /
+                          Object.values(wrap.book.ratings).length
+                        ).toFixed(1)}/5`
+                      : 'none yet'}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-lg">No current book yet. Use Conclude to pick one.</p>
+          )}
+        </section>
+        <NoteTicker notes={personalNotes(state)} />
 
         <section>
           <h2 className="mb-2 font-display text-2xl text-gold">Rules</h2>
@@ -103,43 +128,97 @@ export function Present() {
           )}
         </section>
 
-        <section className="rounded-3xl bg-burgundy p-5 sm:p-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-gold">Suggested next book</p>
-          {featured ? (
-            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
-              <Cover
-                src={featured.coverUrl}
-                title={featured.title}
-                className="h-48 w-32 sm:h-64 sm:w-44"
-              />
-              <div>
-                <h3 className="font-display text-3xl sm:text-5xl">{featured.title}</h3>
-                <p className="mt-1 text-lg text-cream/80">{featured.author}</p>
-                <p className="mt-4 max-w-xl text-lg">{featured.why}</p>
-              </div>
-            </div>
-          ) : (
-            <p className="mt-3 text-lg">Nominate books on the club page to see a suggestion.</p>
-          )}
-        </section>
+        <ShortlistTicker books={state.nominations} />
 
-        {rest.length > 0 ? (
-          <section>
-            <h2 className="mb-3 font-display text-2xl text-gold">Also on the shortlist</h2>
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {rest.map((book) => (
-                <li key={book.id} className="flex gap-3 rounded-2xl bg-cream/10 p-3">
-                  <Cover src={book.coverUrl} title={book.title} className="h-20 w-14" />
-                  <div>
-                    <p className="font-display text-xl">{book.title}</p>
-                    <p className="text-sm text-cream/70">{book.author}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+        <PresentRec label="Most popular in this round’s genre" rec={recs.genre} />
+        <PresentRec label="From past club ratings" rec={recs.ratings} />
+
+        {owner ? (
+          <Button
+            type="button"
+            onClick={() =>
+              startConcluding(code, state, uid!)
+                .then(() => navigate(`/club/${code}`))
+                .catch((err) => setError(friendlyFirebaseError(err)))
+            }
+          >
+            Conclude meeting
+          </Button>
         ) : null}
       </div>
     </div>
+  )
+}
+
+function ShortlistTicker({
+  books,
+}: {
+  books: ClubState['nominations']
+}) {
+  if (books.length === 0) return null
+  const loop = books.length === 1 ? books : [...books, ...books]
+  return (
+    <section className="shortlist-ticker rounded-3xl border border-gold/40 py-4">
+      <p className="mb-3 px-5 text-sm uppercase tracking-[0.2em] text-gold">Shortlist</p>
+      <div className={books.length > 1 ? 'shortlist-ticker-track' : 'flex justify-center gap-6 px-5'}>
+        {loop.map((book, index) => (
+          <div
+            key={`${book.id}-${index}`}
+            className="flex w-36 shrink-0 flex-col items-center gap-2 px-2"
+          >
+            <Cover src={book.coverUrl} title={book.title} className="h-40 w-28" />
+            <p className="line-clamp-2 text-center font-display text-sm">{book.title}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function PresentRec({
+  label,
+  rec,
+}: {
+  label: string
+  rec: AppRecommendation | null
+}) {
+  if (!rec) return null
+  return (
+    <section className="rounded-3xl border border-gold/40 p-5 sm:p-8">
+      <p className="text-sm uppercase tracking-[0.2em] text-gold">{label}</p>
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
+        <Cover
+          src={rec.coverUrl}
+          title={rec.title}
+          className="h-40 w-28 sm:h-52 sm:w-36"
+        />
+        <div>
+          <h3 className="font-display text-3xl sm:text-4xl">{rec.title}</h3>
+          <p className="mt-1 text-lg text-cream/80">{rec.author}</p>
+          <p className="mt-4 max-w-xl text-lg">{rec.why}</p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function NoteTicker({
+  notes,
+}: {
+  notes: Array<{ uid: string; name: string; text: string }>
+}) {
+  if (notes.length === 0) return null
+  const loop = notes.length === 1 ? notes : [...notes, ...notes]
+  return (
+    <section className="note-ticker rounded-3xl border border-gold/40 px-5 py-4">
+      <div className={notes.length > 1 ? 'note-ticker-track' : undefined}>
+        {loop.map((note, index) => (
+          <p key={`${note.uid}-${index}`} className="py-2 text-lg text-cream">
+            <span className="text-gold">{note.name}</span>
+            <span className="text-cream/80"> — {note.text}</span>
+          </p>
+        ))}
+      </div>
+    </section>
   )
 }

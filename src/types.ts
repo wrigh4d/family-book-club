@@ -15,7 +15,15 @@ export const GENRES = [
 
 export type Genre = (typeof GENRES)[number]
 
-export type RoundStatus = 'collecting' | 'locked' | 'reading' | 'done'
+export type RoundStatus = 'collecting' | 'presenting' | 'concluding'
+
+export type CurrentBook = {
+  olid: string
+  title: string
+  author: string
+  coverUrl: string | null
+  genre: string
+}
 
 export type Member = {
   id: string
@@ -45,6 +53,20 @@ export type Nomination = {
   createdAt: number
 }
 
+export type RecVote = 'up' | 'down'
+
+export type RecSource = 'genre' | 'ratings'
+
+export type AppRecommendation = {
+  olid: string
+  title: string
+  author: string
+  coverUrl: string | null
+  genre: string
+  why: string
+  source: RecSource
+}
+
 export type Round = {
   id: string
   status: RoundStatus
@@ -52,6 +74,8 @@ export type Round = {
   lockedAt?: number
   selectedNominationId?: string
   suggestion?: SuggestionSnapshot
+  genreRecommendation?: AppRecommendation | null
+  ratingsRecommendation?: AppRecommendation | null
 }
 
 export type SuggestionSnapshot = {
@@ -67,6 +91,9 @@ export type SuggestionSnapshot = {
     author: string
     coverUrl: string | null
   }>
+  appRecommendation?: AppRecommendation | null
+  genreRecommendation?: AppRecommendation | null
+  ratingsRecommendation?: AppRecommendation | null
 }
 
 export type HistoryBook = {
@@ -79,6 +106,14 @@ export type HistoryBook = {
   genre: Genre
   finishedAt: number
   ratings: Record<string, number>
+  notes?: Record<string, string>
+  subjects?: string[]
+}
+
+export type DislikedRec = {
+  olid: string
+  title: string
+  userId?: string
 }
 
 export type Club = {
@@ -87,7 +122,9 @@ export type Club = {
   createdBy: string
   currentRoundId: string
   currentBookId: string | null
+  currentBook: CurrentBook | null
   createdAt: number
+  dislikedRecs: DislikedRec[]
 }
 
 export type ClubState = {
@@ -98,6 +135,7 @@ export type ClubState = {
   genreVotes: Record<string, Genre[]>
   nominations: Nomination[]
   history: HistoryBook[]
+  recVotes: Record<string, Partial<Record<RecSource, RecVote>>>
 }
 
 export type ScoredNomination = Nomination & {

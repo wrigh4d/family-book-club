@@ -32,3 +32,51 @@ select,
 textarea {
   font: inherit;
 }
+
+button:not(:disabled),
+a[href],
+select:not(:disabled),
+summary {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+@keyframes note-scroll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.note-ticker {
+  overflow: hidden;
+  max-height: 9rem;
+}
+
+.note-ticker-track {
+  animation: note-scroll 28s linear infinite;
+}
+
+@keyframes shortlist-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.shortlist-ticker {
+  overflow: hidden;
+}
+
+.shortlist-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: shortlist-scroll 40s linear infinite;
+}
