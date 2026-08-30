@@ -55,6 +55,7 @@ export function AuthProvider({children}: { children: ReactNode }) {
                 if (!trimmed) throw new Error('Enter your name.')
                 await saveProfile(uid, trimmed)
                 setName(trimmed)
+                setError(null)
             },
         }),
         [uid, displayName, ready, error],

@@ -65,7 +65,7 @@ export function Landing() {
                 </p>
             </header>
 
-            <ErrorBanner message={error ?? localError}/>
+            <ErrorBanner message={localError ?? error}/>
 
             {!ready ? (
                 <p>Getting you in…</p>

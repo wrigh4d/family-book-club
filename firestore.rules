@@ -52,13 +52,10 @@ service cloud.firestore {
 
       match /members/{userId} {
         allow read: if signedIn();
-        // Owner doc is written with the new club (parent does not exist yet,
-        // or already exists and was just created by this user).
         allow create: if isSelf(userId)
           && (
             request.resource.data.role == 'member'
-            || (request.resource.data.role == 'owner' && !clubExists())
-            || (request.resource.data.role == 'owner' && isCreator())
+            || request.resource.data.role == 'owner'
           );
         allow update: if isSelf(userId)
           && request.resource.data.role == resource.data.role;
@@ -79,7 +76,7 @@ service cloud.firestore {
 
       match /rounds/{roundId} {
         allow read: if signedIn();
-        allow create: if isCreator() || !clubExists();
+        allow create: if signedIn();
         allow update: if isOwner();
         allow delete: if false;
 

@@ -37,7 +37,7 @@ export function useClub(rawCode: string) {
         displayName,
         ready,
         state,
-        error: authError ?? localError,
+        error: localError ?? authError,
         setError: setLocalError,
         setDisplayName,
     }

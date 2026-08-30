@@ -104,29 +104,30 @@ export async function createClub(
 
         const now = Date.now()
         const roundRef = doc(collection(ref, 'rounds'))
-        try {
-            await setDoc(ref, {
-                name: clubName,
-                code,
-                createdBy: uid,
-                currentRoundId: roundRef.id,
-                currentBookId: null,
-                currentBook: null,
-                createdAt: now,
-                dislikedRecs: [],
-            })
-        } catch (err) {
-            if (isPermissionDenied(err)) continue
-            throw err
-        }
-
-        await setDoc(doc(ref, 'members', uid), {
+        const batch = writeBatch(db)
+        batch.set(ref, {
+            name: clubName,
+            code,
+            createdBy: uid,
+            currentRoundId: roundRef.id,
+            currentBookId: null,
+            currentBook: null,
+            createdAt: now,
+            dislikedRecs: [],
+        })
+        batch.set(doc(ref, 'members', uid), {
             displayName: person,
             role: 'owner',
             joinedAt: now,
         })
-        await setDoc(roundRef, {status: 'collecting', startedAt: now})
-        return code
+        batch.set(roundRef, {status: 'collecting', startedAt: now})
+        try {
+            await batch.commit()
+            return code
+        } catch (err) {
+            if (isPermissionDenied(err)) continue
+            throw err
+        }
     }
     throw new Error('Could not create a club code. Try again.')
 }
@@ -138,19 +139,29 @@ export async function joinClub(
 ): Promise<void> {
     const name = displayName.trim()
     if (!name) throw new Error('Enter your name.')
-    const snap = await getDoc(clubRef(code))
+    const ref = clubRef(code)
+    const snap = await getDoc(ref)
     if (!snap.exists()) throw new Error('No club with that code.')
-    const memberRef = doc(clubRef(code), 'members', uid)
+    const data = snap.data()
+    const memberRef = doc(ref, 'members', uid)
     const memberSnap = await getDoc(memberRef)
     if (memberSnap.exists()) {
         await updateDoc(memberRef, {displayName: name})
-        return
+    } else {
+        await setDoc(memberRef, {
+            displayName: name,
+            role: data.createdBy === uid ? 'owner' : 'member',
+            joinedAt: Date.now(),
+        })
     }
-    await setDoc(memberRef, {
-        displayName: name,
-        role: 'member',
-        joinedAt: Date.now(),
-    })
+    const roundId = typeof data.currentRoundId === 'string' ? data.currentRoundId : ''
+    if (roundId && data.createdBy === uid) {
+        const roundRef = doc(ref, 'rounds', roundId)
+        const roundSnap = await getDoc(roundRef)
+        if (!roundSnap.exists()) {
+            await setDoc(roundRef, {status: 'collecting', startedAt: Date.now()})
+        }
+    }
 }
 
 export function subscribeClub(

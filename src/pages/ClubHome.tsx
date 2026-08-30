@@ -43,12 +43,8 @@ export function ClubHome() {
         if (!isOwner(state, uid)) return
         if (seededRoundId.current === state.round.id) return
         seededRoundId.current = state.round.id
-        seedGenreVotesFromPreviousRound(code, state.round.id).catch((err) =>
-            setError(friendlyFirebaseError(err)),
-        )
-        migrateRoundNominationsToShortlist(code, state.round.id).catch((err) =>
-            setError(friendlyFirebaseError(err)),
-        )
+        seedGenreVotesFromPreviousRound(code, state.round.id).catch(() => undefined)
+        migrateRoundNominationsToShortlist(code, state.round.id).catch(() => undefined)
     }, [code, uid, state?.round?.id, state?.round?.status, state, setError])
 
     const invite = `${window.location.origin}${import.meta.env.BASE_URL}club/${code}`.replace(
@@ -96,7 +92,8 @@ export function ClubHome() {
         return (
             <Page>
                 <Brand/>
-                <p>{error ?? 'Loading club…'}</p>
+                <p>Loading club…</p>
+                <ErrorBanner message={error}/>
                 {error ? (
                     <Button variant="ghost" onClick={() => navigate('/')}>
                         Back
