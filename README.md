@@ -49,33 +49,6 @@ Local Vite and GitHub Pages share **one** Firebase project. GitHub Pages does **
 
 ## Firebase
 
-The public web config is in the project. You still need Google sign-in and Firestore. Incomplete OAuth branding (missing app domain) is fine while Audience is **Testing**.
-
-**[Google Auth Platform → Audience](https://console.cloud.google.com/auth/audience?project=familybookclub-52781)**
-
-1. User type **External**, publishing status **Testing**.
-2. Add **every family Gmail** as a test user (yours first). Anyone not listed sees “Access blocked.”
-
-**[Authentication → Sign-in method](https://console.firebase.google.com/project/familybookclub-52781/authentication/providers)**
-
-1. **Google** → Enable. Firebase fills Web SDK configuration; you do not need the client secret.
-2. **Anonymous** → Disable.
-
-**[Authentication → Settings → Authorized domains](https://console.firebase.google.com/project/familybookclub-52781/authentication/settings)**
-
-Add:
-
-- `localhost` (usually already there)
-- `familybookclub-52781.firebaseapp.com` (already there)
-- `YOUR_USERNAME.github.io` (hostname only — no `https://`, no `/family-book-club`)
-
-**[Firestore](https://console.firebase.google.com/project/familybookclub-52781/firestore)**
-
-1. Create the database if it does not exist.
-2. Publish `firestore.rules` from this repo (console → Rules, or `firebase deploy --only firestore:rules`). Pages deploys do not do this.
-3. Delete old `users` and `clubs` data if any (anonymous member ids will not match Google UIDs).
-4. **Authentication → Users:** delete leftover anonymous users.
-
 Rules require a Google-signed-in user. Club writes require membership. Round create during club creation uses `existsAfter` so the owner batch succeeds.
 
 Club codes are document IDs. Anyone who knows a code can join; the rules forbid listing `/clubs`. Owner is `createdBy` or `members/{uid}.role == 'owner'`. Members cannot change their own role.
@@ -91,8 +64,6 @@ npm test
 npm run dev
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`).
-
 ## Deploy to GitHub Pages
 
 Repo name `family-book-club` matches `VITE_BASE` in `.github/workflows/deploy.yml`.
@@ -105,7 +76,7 @@ Repo name `family-book-club` matches `VITE_BASE` in `.github/workflows/deploy.ym
 
 Vite, React, TypeScript, Tailwind, Firebase Auth (Google) + Firestore, Open Library.
 
-## Recs (at Present, not between meetings)
+## Recs
 
 - **Genre rec:** popular Open Library title in the genre the group voted for this cycle.
 - **Ratings rec:** after books have been rated, lean into well-rated tags and shy away from poorly rated ones.
