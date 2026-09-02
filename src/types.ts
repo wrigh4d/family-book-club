@@ -154,6 +154,17 @@ export type Club = {
     dislikedRecs: DislikedRec[]
 }
 
+export type ClubMembership = {
+    code: string
+    name: string
+    role: 'owner' | 'member'
+    joinedAt: number
+}
+
+export type JoinedClub = ClubMembership & {
+    currentBook: CurrentBook | null
+}
+
 export type ClubState = {
     club: Club
     members: Member[]

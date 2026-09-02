@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 import {asGenre, isGenre} from '../types'
-import {asClub, asRound, asRoundStatus, parseAppRec, parseCurrentBook, parseGenreList} from './clubParse'
+import {asClub, asRound, asRoundStatus, parseAppRec, parseCurrentBook, parseGenreList, parseUserClubs} from './clubParse'
 
 describe('asGenre', () => {
     it('keeps known genres and falls back to Literary', () => {
@@ -58,6 +58,30 @@ describe('parseAppRec', () => {
             'ratings',
         )
         expect(parseAppRec({title: 'No id'})).toBeNull()
+    })
+})
+
+describe('parseUserClubs', () => {
+    it('reads a clubs map and sorts newest first', () => {
+        expect(
+            parseUserClubs({
+                clubs: {
+                    older: {name: 'Older', role: 'member', joinedAt: 10},
+                    newer: {name: 'Newer', role: 'owner', joinedAt: 20},
+                },
+            }),
+        ).toEqual([
+            {code: 'NEWER', name: 'Newer', role: 'owner', joinedAt: 20},
+            {code: 'OLDER', name: 'Older', role: 'member', joinedAt: 10},
+        ])
+    })
+
+    it('ignores missing or invalid maps and fills defaults', () => {
+        expect(parseUserClubs(undefined)).toEqual([])
+        expect(parseUserClubs({clubs: ['nope']})).toEqual([])
+        expect(parseUserClubs({clubs: {ok: true}})).toEqual([
+            {code: 'OK', name: 'Book club', role: 'member', joinedAt: 0},
+        ])
     })
 })
 

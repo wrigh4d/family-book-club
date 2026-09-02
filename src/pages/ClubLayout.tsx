@@ -115,8 +115,8 @@ function ClubGate() {
                 <p>Loading club…</p>
                 <ErrorBanner message={error}/>
                 {error ? (
-                    <Button variant="ghost" onClick={() => navigate('/')}>
-                        Back
+                    <Button variant="ghost" onClick={() => navigate('/clubs')}>
+                        My clubs
                     </Button>
                 ) : null}
             </Page>

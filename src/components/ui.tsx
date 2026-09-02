@@ -1,4 +1,5 @@
 import type {ButtonHTMLAttributes, FormEvent, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes,} from 'react'
+import {Link} from 'react-router-dom'
 
 export function Page({children}: { children: ReactNode }) {
     return (
@@ -182,6 +183,9 @@ export function Chip({
     )
 }
 
+const textLinkClass =
+    'text-sm font-semibold text-burgundy underline decoration-burgundy/40 underline-offset-2 transition hover:text-burgundy-dark hover:decoration-burgundy'
+
 export function TextButton({
                                children,
                                className = '',
@@ -191,10 +195,26 @@ export function TextButton({
         <button
             type="button"
             {...props}
-            className={`text-sm font-semibold text-burgundy underline decoration-burgundy/40 underline-offset-2 transition hover:text-burgundy-dark hover:decoration-burgundy ${className}`}
+            className={`${textLinkClass} ${className}`}
         >
             {children}
         </button>
+    )
+}
+
+export function TextLink({
+    to,
+    children,
+    className = '',
+}: {
+    to: string
+    children: ReactNode
+    className?: string
+}) {
+    return (
+        <Link to={to} className={`${textLinkClass} ${className}`}>
+            {children}
+        </Link>
     )
 }
 
@@ -262,10 +282,24 @@ export function GoogleSignInCard({
     )
 }
 
-export function SessionBar({name, onSignOut}: {name: string; onSignOut: () => void}) {
+export function SessionBar({
+    name,
+    onSignOut,
+    clubsHref = '/clubs',
+}: {
+    name: string
+    onSignOut: () => void
+    clubsHref?: string | null
+}) {
     return (
         <p className="text-sm text-ink/70">
             Signed in as <span className="font-semibold text-ink">{name}</span>
+            {clubsHref ? (
+                <>
+                    {' · '}
+                    <TextLink to={clubsHref}>My clubs</TextLink>
+                </>
+            ) : null}
             {' · '}
             <TextButton onClick={onSignOut}>Sign out</TextButton>
         </p>

@@ -3,6 +3,7 @@ import {AuthProvider} from './lib/auth'
 import {ClubHome} from './pages/ClubHome'
 import {ClubLayout} from './pages/ClubLayout'
 import {Landing} from './pages/Landing'
+import {MyClubs} from './pages/MyClubs'
 import {Present} from './pages/Present'
 import {ShortlistPage} from './pages/ShortlistPage'
 
@@ -14,6 +15,7 @@ export default function App() {
             <BrowserRouter basename={basename}>
                 <Routes>
                     <Route path="/" element={<Landing/>}/>
+                    <Route path="/clubs" element={<MyClubs/>}/>
                     <Route path="/club/:code" element={<ClubLayout/>}>
                         <Route index element={<ClubHome/>}/>
                         <Route path="shortlist" element={<ShortlistPage/>}/>

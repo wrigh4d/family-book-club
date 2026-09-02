@@ -1,4 +1,4 @@
-import {asGenre, isGenre, type AppRecommendation, type Club, type CurrentBook, type Genre, type HistoryBook, type Member, type Nomination, type RecSource, type Round, type Rule, type SuggestionSnapshot} from '../types'
+import {asGenre, isGenre, type AppRecommendation, type Club, type ClubMembership, type CurrentBook, type Genre, type HistoryBook, type Member, type Nomination, type RecSource, type Round, type Rule, type SuggestionSnapshot} from '../types'
 
 function asString(value: unknown, fallback = ''): string {
     return typeof value === 'string' ? value : fallback
@@ -86,6 +86,28 @@ export function asClub(code: string, data: Record<string, unknown>): Club {
         createdAt: asNumber(data.createdAt),
         dislikedRecs: parseDislikedRecs(data.dislikedRecs),
     }
+}
+
+export function parseUserClubs(data: Record<string, unknown> | undefined): ClubMembership[] {
+    const raw = data?.clubs
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
+    const out: ClubMembership[] = []
+    for (const [code, value] of Object.entries(raw as Record<string, unknown>)) {
+        const trimmed = code.trim().toUpperCase()
+        if (!trimmed) continue
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            out.push({code: trimmed, name: 'Book club', role: 'member', joinedAt: 0})
+            continue
+        }
+        const row = value as Record<string, unknown>
+        out.push({
+            code: trimmed,
+            name: asString(row.name, 'Book club'),
+            role: row.role === 'owner' ? 'owner' : 'member',
+            joinedAt: asNumber(row.joinedAt),
+        })
+    }
+    return out.sort((a, b) => b.joinedAt - a.joinedAt || a.name.localeCompare(b.name))
 }
 
 export function asMember(id: string, data: Record<string, unknown>): Member {

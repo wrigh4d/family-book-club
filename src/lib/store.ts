@@ -3,19 +3,22 @@ import {
     arrayRemove,
     arrayUnion,
     collection,
+    collectionGroup,
     deleteDoc,
     deleteField,
     doc,
     getDoc,
     getDocs,
     onSnapshot,
+    query,
     runTransaction,
     setDoc,
     type Unsubscribe,
     updateDoc,
+    where,
     writeBatch,
 } from 'firebase/firestore'
-import {asGenre, type AppRecommendation, type Club, type ClubState, type CurrentBook, type Genre, type HistoryBook, type Member, type Nomination, type Round, type Rule, type SuggestionSnapshot} from '../types'
+import {asGenre, type AppRecommendation, type Club, type ClubMembership, type ClubState, type CurrentBook, type Genre, type HistoryBook, type JoinedClub, type Member, type Nomination, type Round, type Rule, type SuggestionSnapshot} from '../types'
 import {
     assertCanBeNextBook,
     assertCanJoinShortlist,
@@ -24,8 +27,9 @@ import {
     staleShortlist,
     unfinishedHistoryForCurrent,
 } from './bookStatus'
-import {asClub, asHistory, asMember, asNomination, asRound, asRule, parseGenreList} from './clubParse'
+import {asClub, asHistory, asMember, asNomination, asRound, asRule, parseGenreList, parseUserClubs} from './clubParse'
 import {randomClubCode} from './codes'
+import {firebaseErrorCode} from './errors'
 import {db} from './firebase'
 import {fetchWorkSubjects, isSameRecommendedBook} from './openLibrary'
 import {computeMeetingRecs} from './recs'
@@ -36,8 +40,20 @@ function clubRef(code: string) {
 }
 
 function isPermissionDenied(error: unknown): boolean {
-    return typeof error === 'object' && error !== null && 'code' in error
-        && String((error as {code: unknown}).code) === 'permission-denied'
+    return firebaseErrorCode(error) === 'permission-denied'
+}
+
+function isIgnorableQueryError(error: unknown): boolean {
+    const code = firebaseErrorCode(error)
+    return code === 'permission-denied' || code === 'failed-precondition'
+}
+
+export function clubIdFromMemberPath(path: string): string | null {
+    const parts = path.split('/').filter(Boolean)
+    if (parts.length >= 4 && parts[0] === 'clubs' && parts[2] === 'members' && parts[1]) {
+        return parts[1]
+    }
+    return null
 }
 
 function dataOf(snap: {data: () => unknown}): Record<string, unknown> {
@@ -91,6 +107,182 @@ export async function saveProfile(uid: string, displayName: string): Promise<voi
     )
 }
 
+function userRef(uid: string) {
+    return doc(db, 'users', uid)
+}
+
+/** Clubs cannot be listed in Firestore; membership is indexed on the user doc. */
+export async function rememberClubMembership(
+    uid: string,
+    code: string,
+    info: {name: string; role: 'owner' | 'member'; joinedAt: number},
+): Promise<void> {
+    await setDoc(
+        userRef(uid),
+        {
+            [`clubs.${code}`]: {
+                name: info.name.trim() || 'Book club',
+                role: info.role,
+                joinedAt: info.joinedAt,
+            },
+            updatedAt: Date.now(),
+        },
+        {merge: true},
+    )
+}
+
+async function collectDiscoveredClubCodes(uid: string): Promise<string[]> {
+    const found = new Set<string>()
+
+    try {
+        const owned = await getDocs(query(collection(db, 'clubs'), where('createdBy', '==', uid)))
+        for (const row of owned.docs) found.add(row.id)
+    } catch (err) {
+        if (!isIgnorableQueryError(err)) throw err
+    }
+
+    try {
+        const mine = await getDocs(query(collectionGroup(db, 'members'), where('uid', '==', uid)))
+        for (const row of mine.docs) {
+            const code = clubIdFromMemberPath(row.ref.path)
+            if (code) found.add(code)
+        }
+    } catch (err) {
+        if (!isIgnorableQueryError(err)) throw err
+    }
+
+    try {
+        const members = await getDocs(
+            query(collectionGroup(db, 'members'), where('role', 'in', ['owner', 'member'])),
+        )
+        for (const row of members.docs) {
+            if (row.id !== uid) continue
+            const code = clubIdFromMemberPath(row.ref.path)
+            if (code) found.add(code)
+        }
+    } catch (err) {
+        if (!isIgnorableQueryError(err)) throw err
+    }
+
+    return [...found]
+}
+
+export async function discoverAndRememberClubs(uid: string): Promise<void> {
+    const codes = await collectDiscoveredClubCodes(uid)
+    if (codes.length === 0) return
+
+    const userSnap = await getDoc(userRef(uid))
+    const known = new Set(parseUserClubs(userSnap.exists() ? dataOf(userSnap) : {}).map((row) => row.code))
+    const pending = codes.filter((code) => !known.has(code))
+    if (pending.length === 0) return
+
+    const remembered: Record<string, unknown> = {updatedAt: Date.now()}
+    await Promise.all(
+        pending.map(async (code) => {
+            const [clubSnap, memberSnap] = await Promise.all([
+                getDoc(clubRef(code)),
+                getDoc(doc(clubRef(code), 'members', uid)),
+            ])
+            if (!clubSnap.exists() || !memberSnap.exists()) return
+            const club = asClub(code, dataOf(clubSnap))
+            const member = asMember(uid, dataOf(memberSnap))
+            remembered[`clubs.${code}`] = {
+                name: club.name,
+                role: member.role,
+                joinedAt: member.joinedAt,
+            }
+            if (memberSnap.data()?.uid !== uid) {
+                await updateDoc(memberSnap.ref, {uid}).catch(() => undefined)
+            }
+        }),
+    )
+    if (Object.keys(remembered).length === 1) return
+    await setDoc(userRef(uid), remembered, {merge: true})
+}
+
+async function hydrateJoinedClubs(
+    uid: string,
+    memberships: ClubMembership[],
+): Promise<JoinedClub[]> {
+    if (memberships.length === 0) return []
+    const rows = await Promise.all(
+        memberships.map(async (membership) => {
+            try {
+                const [clubSnap, memberSnap] = await Promise.all([
+                    getDoc(clubRef(membership.code)),
+                    getDoc(doc(clubRef(membership.code), 'members', uid)),
+                ])
+                if (!clubSnap.exists() || !memberSnap.exists()) return null
+                const club = asClub(membership.code, dataOf(clubSnap))
+                const member = asMember(uid, dataOf(memberSnap))
+                return {
+                    code: club.code,
+                    name: club.name,
+                    role: member.role,
+                    joinedAt: member.joinedAt || membership.joinedAt,
+                    currentBook: club.currentBook,
+                } satisfies JoinedClub
+            } catch {
+                return null
+            }
+        }),
+    )
+    return rows
+        .filter((row): row is JoinedClub => row !== null)
+        .sort((a, b) => b.joinedAt - a.joinedAt || a.name.localeCompare(b.name))
+}
+
+export function subscribeJoinedClubs(
+    uid: string,
+    onData: (clubs: JoinedClub[]) => void,
+    onError: (error: Error) => void,
+): Unsubscribe {
+    let generation = 0
+    let cancelled = false
+    let discovered = false
+    let latest: ClubMembership[] = []
+
+    const emit = (memberships: ClubMembership[]) => {
+        if (cancelled) return
+        const myGeneration = ++generation
+        void hydrateJoinedClubs(uid, memberships)
+            .then((clubs) => {
+                if (cancelled || myGeneration !== generation) return
+                onData(clubs)
+            })
+            .catch((err) => {
+                if (cancelled || myGeneration !== generation) return
+                onError(err instanceof Error ? err : new Error(String(err)))
+            })
+    }
+
+    const stop = onSnapshot(
+        userRef(uid),
+        (snap) => {
+            latest = parseUserClubs(snap.exists() ? dataOf(snap) : {})
+            if (discovered || latest.length > 0) emit(latest)
+        },
+        (err) => onError(err),
+    )
+
+    void discoverAndRememberClubs(uid)
+        .catch((err) => {
+            if (!cancelled && !isIgnorableQueryError(err)) {
+                onError(err instanceof Error ? err : new Error(String(err)))
+            }
+        })
+        .finally(() => {
+            if (cancelled) return
+            discovered = true
+            emit(latest)
+        })
+
+    return () => {
+        cancelled = true
+        stop()
+    }
+}
+
 export async function loadProfile(uid: string): Promise<string | null> {
     const snap = await getDoc(doc(db, 'users', uid))
     if (!snap.exists()) return null
@@ -132,8 +324,21 @@ export async function createClub(
             displayName: person,
             role: 'owner',
             joinedAt: now,
+            uid,
         })
         batch.set(roundRef, {status: 'collecting', startedAt: now})
+        batch.set(
+            userRef(uid),
+            {
+                [`clubs.${code}`]: {
+                    name: clubName,
+                    role: 'owner',
+                    joinedAt: now,
+                },
+                updatedAt: now,
+            },
+            {merge: true},
+        )
         try {
             await batch.commit()
             return code
@@ -167,14 +372,20 @@ export async function joinClub(
     const data = snap.data()
     const memberRef = doc(ref, 'members', uid)
     const memberSnap = await getDoc(memberRef)
-    const write = memberWriteNeeded(memberSnap.exists() ? memberSnap.data() : null, name)
+    const existingMember = memberSnap.exists() ? memberSnap.data() : null
+    const write = memberWriteNeeded(existingMember, name)
+    const role: 'owner' | 'member' =
+        existingMember?.role === 'owner' || data.createdBy === uid ? 'owner' : 'member'
+    const joinedAt =
+        typeof existingMember?.joinedAt === 'number' ? existingMember.joinedAt : Date.now()
     if (write === 'rename') {
-        await updateDoc(memberRef, {displayName: name})
+        await updateDoc(memberRef, {displayName: name, uid})
     } else if (write === 'create') {
         await setDoc(memberRef, {
             displayName: name,
-            role: data.createdBy === uid ? 'owner' : 'member',
-            joinedAt: Date.now(),
+            role,
+            joinedAt,
+            uid,
         })
         const roundId = typeof data.currentRoundId === 'string' ? data.currentRoundId : ''
         if (roundId && data.createdBy === uid) {
@@ -184,7 +395,11 @@ export async function joinClub(
                 await setDoc(roundRef, {status: 'collecting', startedAt: Date.now()})
             }
         }
+    } else if (existingMember?.uid !== uid) {
+        await updateDoc(memberRef, {uid})
     }
+    const clubName = typeof data.name === 'string' && data.name.trim() ? data.name.trim() : 'Book club'
+    await rememberClubMembership(uid, code, {name: clubName, role, joinedAt})
 }
 
 export function subscribeClub(

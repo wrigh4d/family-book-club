@@ -1,8 +1,10 @@
 import {type FormEvent, useState} from 'react'
-import {useNavigate} from 'react-router-dom'
+import {Link, useNavigate} from 'react-router-dom'
+import {ClubList} from '../components/ClubList'
 import {
     Brand,
     Button,
+    buttonClass,
     Card,
     ErrorBanner,
     Field,
@@ -17,6 +19,7 @@ import {useAuth} from '../lib/auth'
 import {normalizeClubCode} from '../lib/codes'
 import {friendlyFirebaseError} from '../lib/errors'
 import {createClub, joinClub} from '../lib/store'
+import {useJoinedClubs} from '../lib/useJoinedClubs'
 
 export function Landing() {
     const {
@@ -30,6 +33,9 @@ export function Landing() {
         signOut,
     } = useAuth()
     const navigate = useNavigate()
+    const {clubs, ready: clubsReady, error: clubsError} = useJoinedClubs(
+        uid && displayName ? uid : null,
+    )
     const [localError, setLocalError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
 
@@ -98,7 +104,7 @@ export function Landing() {
                 </p>
             </header>
 
-            <ErrorBanner message={localError ?? error}/>
+            <ErrorBanner message={localError ?? clubsError ?? error}/>
 
             {!ready ? (
                 <p>Getting you in…</p>
@@ -121,7 +127,23 @@ export function Landing() {
                 </>
             ) : (
                 <>
-                    <SessionBar name={displayName} onSignOut={() => void signOut()}/>
+                    <SessionBar name={displayName} onSignOut={() => void signOut()} clubsHref={null}/>
+                    <Card>
+                        <h2 className="mb-3 font-display text-2xl">Your clubs</h2>
+                        {!clubsReady ? (
+                            <p className="text-sm text-ink/70">Loading your clubs…</p>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                <ClubList
+                                    clubs={clubs}
+                                    empty="Clubs you create or join will show up here."
+                                />
+                                <Link className={buttonClass('secondary')} to="/clubs">
+                                    {clubs.length > 0 ? 'See all clubs' : 'Go to your clubs'}
+                                </Link>
+                            </div>
+                        )}
+                    </Card>
                     <Card>
                         <h2 className="mb-3 font-display text-2xl">Create a club</h2>
                         <form className="flex flex-col gap-3" onSubmit={handleCreate}>
