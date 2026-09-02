@@ -112,7 +112,16 @@ export function CurrentBookCard({
                             placeholder="A thought for the meeting — optional"
                             aria-label="Your note on the current book"
                         />
-                        <div className="mt-2 flex justify-end">
+                        <div className="mt-2 flex flex-wrap justify-end gap-2">
+                            {owner ? (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setChangeForId(current.olid)}
+                                >
+                                    Change current book
+                                </Button>
+                            ) : null}
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -121,12 +130,6 @@ export function CurrentBookCard({
                                 Save note
                             </Button>
                         </div>
-                    </div>
-                    {owner ? (
-                        <Button type="button" variant="ghost" onClick={() => setChangeForId(current.olid)}>
-                            Change current book
-                        </Button>
-                    ) : null}
                 </>
             )}
         </Card>
