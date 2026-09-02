@@ -49,9 +49,11 @@ Local Vite and GitHub Pages share **one** Firebase project. GitHub Pages does **
 
 ## Firebase
 
-Rules require a Google-signed-in user. Club writes require membership. Round create during club creation uses `existsAfter` so the owner batch succeeds.
+Rules require a Google-signed-in user. Club writes require membership. Round create during club creation uses
+`existsAfter` so the owner batch succeeds.
 
-Club codes are document IDs. Anyone who knows a code can join; the rules forbid listing `/clubs`. Owner is `createdBy` or `members/{uid}.role == 'owner'`. Members cannot change their own role.
+Club codes are document IDs. Anyone who knows a code can join; the rules forbid listing `/clubs`. Owner is `createdBy`
+or `members/{uid}.role == 'owner'`. Members cannot change their own role.
 
 Do not commit `serviceAccountKey.json` or the Admin SDK. The web `apiKey` / `projectId` config is enough.
 
