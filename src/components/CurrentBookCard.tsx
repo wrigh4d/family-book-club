@@ -130,6 +130,7 @@ export function CurrentBookCard({
                                 Save note
                             </Button>
                         </div>
+                    </div>
                 </>
             )}
         </Card>

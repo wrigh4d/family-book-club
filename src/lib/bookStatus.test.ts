@@ -3,7 +3,9 @@ import {
     availableShortlist,
     clubBookStatus,
     clubBookStatusLabel,
+    groupRatingLabel,
     historyDocId,
+    pastHistoryBooks,
     unfinishedHistoryForCurrent,
 } from './bookStatus'
 import type {ClubState, Nomination} from '../types'
@@ -155,5 +157,26 @@ describe('unfinishedHistoryForCurrent', () => {
         })
         expect(clubBookStatus(abandoned, {olid: '/works/OL1', title: 'Dune'})).toBeNull()
         expect(clubBookStatus(abandoned, {olid: '/works/OL2', title: 'Emma'})).toBe('history')
+    })
+})
+
+describe('pastHistoryBooks', () => {
+    it('omits the current book and keeps earlier reads', () => {
+        const club = state({
+            current: {olid: '/works/OL1', title: 'Dune'},
+            history: [
+                {olid: '/works/OL1', title: 'Dune'},
+                {olid: '/works/OL2', title: 'Emma'},
+            ],
+        })
+        expect(pastHistoryBooks(club).map((row) => row.title)).toEqual(['Emma'])
+    })
+})
+
+describe('groupRatingLabel', () => {
+    it('averages club ratings', () => {
+        expect(groupRatingLabel({})).toBe('No ratings yet')
+        expect(groupRatingLabel({a: 5, b: 3})).toBe('4.0/5 · 2 ratings')
+        expect(groupRatingLabel({a: 4})).toBe('4.0/5 · 1 rating')
     })
 })

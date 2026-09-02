@@ -434,6 +434,8 @@ export function subscribeClub(
     let history: HistoryBook[] = []
     let roundUnsubs: Unsubscribe[] = []
     let listenedRoundId: string | null = null
+    let historyDocUnsub: Unsubscribe | null = null
+    let listenedHistoryId: string | null = null
 
     const emit = () => {
         if (!club) return
@@ -469,6 +471,26 @@ export function subscribeClub(
         )
     }
 
+    const listenToCurrentHistory = (historyId: string | null) => {
+        if (listenedHistoryId === historyId) return
+        listenedHistoryId = historyId
+        historyDocUnsub?.()
+        historyDocUnsub = null
+        if (!historyId) {
+            history = []
+            emit()
+            return
+        }
+        historyDocUnsub = onSnapshot(
+            doc(clubRef(code), 'history', historyId),
+            (snap) => {
+                history = snap.exists() ? [asHistory(snap.id, dataOf(snap))] : []
+                emit()
+            },
+            (err) => onError(err),
+        )
+    }
+
     unsubscribers.push(
         onSnapshot(
             clubRef(code),
@@ -479,6 +501,8 @@ export function subscribeClub(
                 }
                 club = asClub(code, dataOf(snap))
                 if (club.currentRoundId) listenToRound(club.currentRoundId)
+                const currentOlid = club.currentBook?.olid
+                listenToCurrentHistory(currentOlid ? historyDocId(currentOlid) : null)
                 emit()
             },
             (err) => onError(err),
@@ -513,22 +537,42 @@ export function subscribeClub(
             },
             (err) => onError(err),
         ),
-        onSnapshot(
-            collection(clubRef(code), 'history'),
-            (snap) => {
-                history = snap.docs
-                    .map((row) => asHistory(row.id, dataOf(row)))
-                    .sort((a, b) => b.finishedAt - a.finishedAt)
-                emit()
-            },
-            (err) => onError(err),
-        ),
     )
 
     return () => {
         for (const stop of unsubscribers) stop()
         for (const stop of roundUnsubs) stop()
+        historyDocUnsub?.()
     }
+}
+
+export function subscribeClubHistory(
+    code: string,
+    onData: (history: HistoryBook[]) => void,
+    onError: (error: Error) => void,
+): Unsubscribe {
+    return onSnapshot(
+        collection(clubRef(code), 'history'),
+        (snap) => {
+            onData(
+                snap.docs
+                    .map((row) => asHistory(row.id, dataOf(row)))
+                    .sort((a, b) => b.finishedAt - a.finishedAt),
+            )
+        },
+        (err) => onError(err),
+    )
+}
+
+export async function loadClubHistory(code: string): Promise<HistoryBook[]> {
+    const snap = await getDocs(collection(clubRef(code), 'history'))
+    return snap.docs
+        .map((row) => asHistory(row.id, dataOf(row)))
+        .sort((a, b) => b.finishedAt - a.finishedAt)
+}
+
+async function stateWithHistory(code: string, state: ClubState): Promise<ClubState> {
+    return {...state, history: await loadClubHistory(code)}
 }
 
 export async function addRule(
@@ -590,9 +634,10 @@ export async function addNomination(
     },
     state: ClubState,
 ): Promise<string> {
-    assertCanJoinShortlist(state, book)
-    await pruneShortlist(code, state)
-    const listed = findMatchingClubBook(book, state.nominations)
+    const full = await stateWithHistory(code, state)
+    assertCanJoinShortlist(full, book)
+    await pruneShortlist(code, full)
+    const listed = findMatchingClubBook(book, full.nominations)
     if (listed) return listed.id
     const ref = await addDoc(collection(clubRef(code), 'shortlist'), {
         olid: book.olid,
@@ -626,7 +671,8 @@ export async function removeFromShortlist(code: string, nominationId: string): P
 }
 
 export async function pruneShortlist(code: string, state: ClubState): Promise<void> {
-    const stale = staleShortlist(state)
+    const full = await stateWithHistory(code, state)
+    const stale = staleShortlist(full)
     if (stale.length === 0) return
     const batch = writeBatch(db)
     for (const book of stale) {
@@ -668,12 +714,13 @@ function snapshotFromState(
 export async function startPresenting(code: string, state: ClubState, uid: string): Promise<void> {
     assertOwner(state, uid)
     if (!state.round) throw new Error('No active round.')
-    const computed = await computeMeetingRecs(state)
+    const full = await stateWithHistory(code, state)
+    const computed = await computeMeetingRecs(full)
     const recs = {
         genreRecommendation: computed.genre,
         ratingsRecommendation: computed.ratings,
     }
-    const suggestion = snapshotFromState(state, recs)
+    const suggestion = snapshotFromState(full, recs)
     await updateDoc(doc(clubRef(code), 'rounds', state.round.id), {
         status: 'presenting',
         lockedAt: Date.now(),
@@ -707,9 +754,10 @@ export async function setStartingBook(
     uid: string,
     book: CurrentBook,
 ): Promise<void> {
-    assertOwner(state, uid)
-    assertCanBeNextBook(state, book)
-    const listed = findMatchingClubBook(book, state.nominations)
+    const full = await stateWithHistory(code, state)
+    assertOwner(full, uid)
+    assertCanBeNextBook(full, book)
+    const listed = findMatchingClubBook(book, full.nominations)
     if (listed) await deleteDoc(doc(clubRef(code), 'shortlist', listed.id))
     await updateDoc(clubRef(code), {
         currentBook: toCurrentBook(book),
@@ -723,33 +771,34 @@ export async function changeCurrentBook(
     uid: string,
     book: CurrentBook,
 ): Promise<void> {
-    assertOwner(state, uid)
-    if (!resolveCurrentBook(state)) throw new Error('No current book.')
-    if (state.round && state.round.status !== 'collecting') {
+    const full = await stateWithHistory(code, state)
+    assertOwner(full, uid)
+    if (!resolveCurrentBook(full)) throw new Error('No current book.')
+    if (full.round && full.round.status !== 'collecting') {
         throw new Error('Finish or leave presenting before changing the current book.')
     }
-    assertCanBeNextBook(state, book)
+    assertCanBeNextBook(full, book)
 
     const batch = writeBatch(db)
     const historyIds = new Set<string>()
-    const currentId = currentHistoryId(state)
+    const currentId = currentHistoryId(full)
     if (currentId) historyIds.add(currentId)
-    for (const row of unfinishedHistoryForCurrent(state)) {
+    for (const row of unfinishedHistoryForCurrent(full)) {
         historyIds.add(row.id)
     }
     for (const id of historyIds) {
         batch.delete(doc(clubRef(code), 'history', id))
     }
 
-    const listed = findMatchingClubBook(book, state.nominations)
+    const listed = findMatchingClubBook(book, full.nominations)
     if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
 
     batch.update(clubRef(code), {
         currentBook: toCurrentBook(book),
         currentBookId: book.olid || null,
     })
-    if (state.round?.selectedNominationId) {
-        batch.update(doc(clubRef(code), 'rounds', state.round.id), {
+    if (full.round?.selectedNominationId) {
+        batch.update(doc(clubRef(code), 'rounds', full.round.id), {
             selectedNominationId: deleteField(),
         })
     }
@@ -762,21 +811,22 @@ export async function pickNextBook(
     uid: string,
     book: CurrentBook | null,
 ): Promise<void> {
-    assertOwner(state, uid)
-    if (!state.round) throw new Error('No active round.')
-    if (book) assertCanBeNextBook(state, book)
-    await pruneShortlist(code, state)
+    const full = await stateWithHistory(code, state)
+    assertOwner(full, uid)
+    if (!full.round) throw new Error('No active round.')
+    if (book) assertCanBeNextBook(full, book)
+    await pruneShortlist(code, full)
     const shown = [
-        state.round.genreRecommendation,
-        state.round.ratingsRecommendation,
-        state.round.suggestion?.genreRecommendation,
-        state.round.suggestion?.ratingsRecommendation,
+        full.round.genreRecommendation,
+        full.round.ratingsRecommendation,
+        full.round.suggestion?.genreRecommendation,
+        full.round.suggestion?.ratingsRecommendation,
     ].filter((rec): rec is AppRecommendation => Boolean(rec?.olid))
     const ignored = shown.filter((rec) => {
         if (book && isSameRecommendedBook(rec, [book])) return false
-        return !state.nominations.some((item) => isSameRecommendedBook(rec, [item]))
+        return !full.nominations.some((item) => isSameRecommendedBook(rec, [item]))
     })
-    const dislikedRecs = [...state.club.dislikedRecs]
+    const dislikedRecs = [...full.club.dislikedRecs]
     for (const rec of ignored) {
         if (!isSameRecommendedBook(rec, dislikedRecs)) {
             dislikedRecs.push({olid: rec.olid, title: rec.title})
@@ -785,19 +835,19 @@ export async function pickNextBook(
 
     const batch = writeBatch(db)
     if (book) {
-        const listed = findMatchingClubBook(book, state.nominations)
+        const listed = findMatchingClubBook(book, full.nominations)
         if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
     }
     const roundRef = doc(collection(clubRef(code), 'rounds'))
     batch.set(roundRef, {status: 'collecting', startedAt: Date.now()})
-    for (const [userId, genres] of Object.entries(state.genreVotes)) {
+    for (const [userId, genres] of Object.entries(full.genreVotes)) {
         if (genres.length > 0) {
             batch.set(doc(clubRef(code), 'rounds', roundRef.id, 'genreVotes', userId), {genres})
         }
     }
     batch.update(clubRef(code), {
         currentRoundId: roundRef.id,
-        previousRoundId: state.round.id,
+        previousRoundId: full.round.id,
         currentBookId: book?.olid ?? null,
         currentBook: book ? toCurrentBook(book) : null,
         dislikedRecs,
@@ -901,6 +951,17 @@ export async function savePersonalNote(
     note: string,
 ): Promise<void> {
     await upsertCurrentHistory(code, state, uid, {note: note.trim()})
+}
+
+export async function saveHistoryComment(
+    code: string,
+    historyId: string,
+    uid: string,
+    note: string,
+): Promise<void> {
+    await updateDoc(doc(clubRef(code), 'history', historyId), {
+        [`notes.${uid}`]: note.trim(),
+    })
 }
 
 export function currentRoundHasVotes(votes: Record<string, Genre[]>): boolean {

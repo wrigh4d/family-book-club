@@ -82,6 +82,9 @@ export function ClubHome() {
                         </p>
                     </Card>
                 )}
+                <Link className={buttonClass('ghost')} to={`/club/${code}/history`}>
+                    Past books
+                </Link>
             </Page>
         )
     }
@@ -124,6 +127,9 @@ export function ClubHome() {
                 owner={owner}
                 onError={(err) => setError(friendlyFirebaseError(err))}
             />
+            <Link className={buttonClass('ghost')} to={`/club/${code}/history`}>
+                Past books
+            </Link>
         </Page>
     )
 }

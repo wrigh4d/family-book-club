@@ -68,3 +68,24 @@ export function unfinishedHistoryForCurrent(state: ClubState): HistoryBook[] {
     if (!current) return []
     return state.history.filter((row) => isSameClubBook(row, current))
 }
+
+export function pastHistoryBooks(state: ClubState): HistoryBook[] {
+    const current = currentRef(state)
+    return state.history.filter((row) => !current || !isSameClubBook(row, current))
+}
+
+export function groupRating(ratings: Record<string, number>): {average: number; count: number} | null {
+    const values = Object.values(ratings).filter((n) => Number.isFinite(n) && n >= 1 && n <= 5)
+    if (values.length === 0) return null
+    return {
+        average: values.reduce((a, b) => a + b, 0) / values.length,
+        count: values.length,
+    }
+}
+
+export function groupRatingLabel(ratings: Record<string, number>): string {
+    const group = groupRating(ratings)
+    if (!group) return 'No ratings yet'
+    const n = group.count
+    return `${group.average.toFixed(1)}/5 · ${n} ${n === 1 ? 'rating' : 'ratings'}`
+}

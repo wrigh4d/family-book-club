@@ -2,6 +2,7 @@ import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom'
 import {AuthProvider} from './lib/auth'
 import {ClubHome} from './pages/ClubHome'
 import {ClubLayout} from './pages/ClubLayout'
+import {HistoryPage} from './pages/HistoryPage'
 import {Landing} from './pages/Landing'
 import {MyClubs} from './pages/MyClubs'
 import {Present} from './pages/Present'
@@ -19,6 +20,7 @@ export default function App() {
                     <Route path="/club/:code" element={<ClubLayout/>}>
                         <Route index element={<ClubHome/>}/>
                         <Route path="shortlist" element={<ShortlistPage/>}/>
+                        <Route path="history" element={<HistoryPage/>}/>
                         <Route path="present" element={<Present/>}/>
                     </Route>
                     <Route path="*" element={<Navigate to="/" replace/>}/>
