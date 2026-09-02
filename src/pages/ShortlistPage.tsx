@@ -15,7 +15,6 @@ import { useClub } from '../lib/useClub'
 
 export function ShortlistPage() {
   const { code, uid, displayName, state, error, setError } = useClub()
-  if (!uid || !displayName || !state) return null
 
   const staleKey = state
     ? staleShortlist(state)
