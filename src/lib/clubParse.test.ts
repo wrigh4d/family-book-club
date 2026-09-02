@@ -83,6 +83,38 @@ describe('parseUserClubs', () => {
             {code: 'OK', name: 'Book club', role: 'member', joinedAt: 0},
         ])
     })
+
+    it('reads setDoc merge fields stored as clubs.CODE', () => {
+        expect(
+            parseUserClubs({
+                'clubs.Z6DMXK': {
+                    name: 'S/W Family Book Club',
+                    role: 'owner',
+                    joinedAt: 1788103475595,
+                },
+                'clubs.ZB5647': {
+                    name: 'Kirk and Nick',
+                    role: 'owner',
+                    joinedAt: 1788185605841,
+                },
+                displayName: 'Nick',
+                updatedAt: 1788311068352,
+            }),
+        ).toEqual([
+            {
+                code: 'ZB5647',
+                name: 'Kirk and Nick',
+                role: 'owner',
+                joinedAt: 1788185605841,
+            },
+            {
+                code: 'Z6DMXK',
+                name: 'S/W Family Book Club',
+                role: 'owner',
+                joinedAt: 1788103475595,
+            },
+        ])
+    })
 })
 
 describe('asClub', () => {

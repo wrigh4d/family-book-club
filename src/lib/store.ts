@@ -111,24 +111,40 @@ function userRef(uid: string) {
     return doc(db, 'users', uid)
 }
 
+function membershipRecord(info: {name: string; role: 'owner' | 'member'; joinedAt: number}) {
+    return {
+        name: info.name.trim() || 'Book club',
+        role: info.role,
+        joinedAt: info.joinedAt,
+    }
+}
+
+async function writeUserClubMemberships(
+    uid: string,
+    memberships: Array<{code: string; name: string; role: 'owner' | 'member'; joinedAt: number}>,
+): Promise<void> {
+    if (memberships.length === 0) return
+    const payload: Record<string, unknown> = {updatedAt: Date.now()}
+    for (const row of memberships) {
+        payload[`clubs.${row.code}`] = membershipRecord(row)
+    }
+    try {
+        await updateDoc(userRef(uid), payload)
+    } catch (err) {
+        if (!isNotFound(err)) throw err
+        const clubs: Record<string, ReturnType<typeof membershipRecord>> = {}
+        for (const row of memberships) clubs[row.code] = membershipRecord(row)
+        await setDoc(userRef(uid), {clubs, updatedAt: Date.now()}, {merge: true})
+    }
+}
+
 /** Clubs cannot be listed in Firestore; membership is indexed on the user doc. */
 export async function rememberClubMembership(
     uid: string,
     code: string,
     info: {name: string; role: 'owner' | 'member'; joinedAt: number},
 ): Promise<void> {
-    await setDoc(
-        userRef(uid),
-        {
-            [`clubs.${code}`]: {
-                name: info.name.trim() || 'Book club',
-                role: info.role,
-                joinedAt: info.joinedAt,
-            },
-            updatedAt: Date.now(),
-        },
-        {merge: true},
-    )
+    await writeUserClubMemberships(uid, [{code, ...info}])
 }
 
 async function collectDiscoveredClubCodes(uid: string): Promise<string[]> {
@@ -176,7 +192,7 @@ export async function discoverAndRememberClubs(uid: string): Promise<void> {
     const pending = codes.filter((code) => !known.has(code))
     if (pending.length === 0) return
 
-    const remembered: Record<string, unknown> = {updatedAt: Date.now()}
+    const toWrite: Array<{code: string; name: string; role: 'owner' | 'member'; joinedAt: number}> = []
     await Promise.all(
         pending.map(async (code) => {
             const [clubSnap, memberSnap] = await Promise.all([
@@ -186,18 +202,18 @@ export async function discoverAndRememberClubs(uid: string): Promise<void> {
             if (!clubSnap.exists() || !memberSnap.exists()) return
             const club = asClub(code, dataOf(clubSnap))
             const member = asMember(uid, dataOf(memberSnap))
-            remembered[`clubs.${code}`] = {
+            toWrite.push({
+                code,
                 name: club.name,
                 role: member.role,
                 joinedAt: member.joinedAt,
-            }
+            })
             if (memberSnap.data()?.uid !== uid) {
                 await updateDoc(memberSnap.ref, {uid}).catch(() => undefined)
             }
         }),
     )
-    if (Object.keys(remembered).length === 1) return
-    await setDoc(userRef(uid), remembered, {merge: true})
+    await writeUserClubMemberships(uid, toWrite)
 }
 
 async function hydrateJoinedClubs(
@@ -207,29 +223,34 @@ async function hydrateJoinedClubs(
     if (memberships.length === 0) return []
     const rows = await Promise.all(
         memberships.map(async (membership) => {
+            const cached: JoinedClub = {...membership, currentBook: null}
             try {
                 const [clubSnap, memberSnap] = await Promise.all([
                     getDoc(clubRef(membership.code)),
                     getDoc(doc(clubRef(membership.code), 'members', uid)),
                 ])
-                if (!clubSnap.exists() || !memberSnap.exists()) return null
-                const club = asClub(membership.code, dataOf(clubSnap))
-                const member = asMember(uid, dataOf(memberSnap))
-                return {
-                    code: club.code,
-                    name: club.name,
-                    role: member.role,
-                    joinedAt: member.joinedAt || membership.joinedAt,
-                    currentBook: club.currentBook,
-                } satisfies JoinedClub
+                if (clubSnap.exists() && memberSnap.exists()) {
+                    const club = asClub(membership.code, dataOf(clubSnap))
+                    const member = asMember(uid, dataOf(memberSnap))
+                    return {
+                        code: club.code,
+                        name: club.name,
+                        role: member.role,
+                        joinedAt: member.joinedAt || membership.joinedAt,
+                        currentBook: club.currentBook,
+                    } satisfies JoinedClub
+                }
+                if (clubSnap.exists()) {
+                    const club = asClub(membership.code, dataOf(clubSnap))
+                    return {...cached, name: club.name, currentBook: club.currentBook}
+                }
             } catch {
-                return null
+                return cached
             }
+            return cached
         }),
     )
-    return rows
-        .filter((row): row is JoinedClub => row !== null)
-        .sort((a, b) => b.joinedAt - a.joinedAt || a.name.localeCompare(b.name))
+    return rows.sort((a, b) => b.joinedAt - a.joinedAt || a.name.localeCompare(b.name))
 }
 
 export function subscribeJoinedClubs(
@@ -327,18 +348,14 @@ export async function createClub(
             uid,
         })
         batch.set(roundRef, {status: 'collecting', startedAt: now})
-        batch.set(
-            userRef(uid),
-            {
-                [`clubs.${code}`]: {
-                    name: clubName,
-                    role: 'owner',
-                    joinedAt: now,
-                },
-                updatedAt: now,
+        batch.update(userRef(uid), {
+            [`clubs.${code}`]: {
+                name: clubName,
+                role: 'owner',
+                joinedAt: now,
             },
-            {merge: true},
-        )
+            updatedAt: now,
+        })
         try {
             await batch.commit()
             return code

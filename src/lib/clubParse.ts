@@ -88,26 +88,41 @@ export function asClub(code: string, data: Record<string, unknown>): Club {
     }
 }
 
-export function parseUserClubs(data: Record<string, unknown> | undefined): ClubMembership[] {
-    const raw = data?.clubs
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
-    const out: ClubMembership[] = []
-    for (const [code, value] of Object.entries(raw as Record<string, unknown>)) {
-        const trimmed = code.trim().toUpperCase()
-        if (!trimmed) continue
-        if (!value || typeof value !== 'object' || Array.isArray(value)) {
-            out.push({code: trimmed, name: 'Book club', role: 'member', joinedAt: 0})
-            continue
-        }
-        const row = value as Record<string, unknown>
-        out.push({
-            code: trimmed,
-            name: asString(row.name, 'Book club'),
-            role: row.role === 'owner' ? 'owner' : 'member',
-            joinedAt: asNumber(row.joinedAt),
-        })
+function asMembership(code: string, value: unknown): ClubMembership | null {
+    const trimmed = code.trim().toUpperCase().replaceAll(/[^A-Z0-9]/g, '')
+    if (!trimmed) return null
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return {code: trimmed, name: 'Book club', role: 'member', joinedAt: 0}
     }
-    return out.sort((a, b) => b.joinedAt - a.joinedAt || a.name.localeCompare(b.name))
+    const row = value as Record<string, unknown>
+    return {
+        code: trimmed,
+        name: asString(row.name, 'Book club'),
+        role: row.role === 'owner' ? 'owner' : 'member',
+        joinedAt: asNumber(row.joinedAt),
+    }
+}
+
+export function parseUserClubs(data: Record<string, unknown> | undefined): ClubMembership[] {
+    if (!data) return []
+    const byCode = new Map<string, ClubMembership>()
+
+    const nested = data.clubs
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+        for (const [code, value] of Object.entries(nested as Record<string, unknown>)) {
+            const row = asMembership(code, value)
+            if (row) byCode.set(row.code, row)
+        }
+    }
+
+    // setDoc({ merge: true }) treats "clubs.CODE" as a literal field name, not a nested map.
+    for (const [key, value] of Object.entries(data)) {
+        if (!key.startsWith('clubs.') || key === 'clubs') continue
+        const row = asMembership(key.slice('clubs.'.length), value)
+        if (row) byCode.set(row.code, row)
+    }
+
+    return [...byCode.values()].sort((a, b) => b.joinedAt - a.joinedAt || a.name.localeCompare(b.name))
 }
 
 export function asMember(id: string, data: Record<string, unknown>): Member {
