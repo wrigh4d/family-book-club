@@ -4,12 +4,11 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth'
 import { auth } from './firebase'
-import { firebaseErrorCode, friendlyFirebaseError, shouldFallbackToGoogleRedirect } from './errors'
+import { firebaseErrorCode, friendlyFirebaseError } from './errors'
 import { loadProfile, saveProfile } from './store'
 
 type AuthValue = {
@@ -34,6 +33,114 @@ function suggestedNameFromUser(user: User): string | null {
   return fromGoogle.split(/\s+/)[0] ?? null
 }
 
+function isCancelledSignIn(code: string): boolean {
+  return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'
+}
+
+function popupHelpMessage(code: string): string | null {
+  if (code === 'auth/popup-blocked') {
+    return 'Your browser blocked the Google sign-in window. Allow popups for this site and try again.'
+  }
+  return null
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [uid, setUid] = useState<string | null>(null)
+  const [displayName, setName] = useState<string | null>(null)
+  const [suggestedName, setSuggestedName] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let unsub: (() => void) | undefined
+
+    async function start() {
+      // Clear any leftover redirect flow from older versions of this site.
+      // Do not start new redirect sign-ins; Safari/iOS often lose sessionStorage.
+      try {
+        await getRedirectResult(auth)
+      } catch (err) {
+        if (!cancelled && !isCancelledSignIn(firebaseErrorCode(err))) {
+          setError(friendlyFirebaseError(err))
+        }
+      }
+      if (cancelled) return
+      unsub = onAuthStateChanged(auth, async (user) => {
+        try {
+          if (user?.isAnonymous) {
+            await firebaseSignOut(auth)
+            return
+          }
+          if (!user) {
+            setUid(null)
+            setName(null)
+            setSuggestedName(null)
+            setReady(true)
+            return
+          }
+          setUid(user.uid)
+          setSuggestedName(suggestedNameFromUser(user))
+          const saved = await loadProfile(user.uid)
+          setName(saved)
+          setError(null)
+          setReady(true)
+        } catch (err) {
+          setError(friendlyFirebaseError(err))
+          setReady(true)
+        }
+      })
+    }
+
+    void start()
+    return () => {
+      cancelled = true
+      unsub?.()
+    }
+  }, [])
+
+  const value = useMemo<AuthValue>(
+    () => ({
+      uid,
+      displayName,
+      suggestedName,
+      ready,
+      error,
+      setDisplayName: async (name: string) => {
+        if (!uid) throw new Error('Not signed in yet.')
+        const trimmed = name.trim()
+        if (!trimmed) throw new Error('Enter your name.')
+        await saveProfile(uid, trimmed)
+        setName(trimmed)
+        setError(null)
+      },
+      signInWithGoogle: async () => {
+        setError(null)
+        try {
+          await signInWithPopup(auth, googleProvider)
+        } catch (err) {
+          const code = firebaseErrorCode(err)
+          if (isCancelledSignIn(code)) return
+          setError(popupHelpMessage(code) ?? friendlyFirebaseError(err))
+          throw err
+        }
+      },
+      signOut: async () => {
+        setError(null)
+        await firebaseSignOut(auth)
+      },
+    }),
+    [uid, displayName, suggestedName, ready, error],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth(): AuthValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  return ctx
+}
 function isCancelledSignIn(code: string): boolean {
   return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'
 }
