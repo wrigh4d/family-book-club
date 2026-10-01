@@ -13,7 +13,7 @@ export function ClubList({ clubs, empty }: { clubs: JoinedClub[]; empty: string 
         <li key={club.code}>
           <Link
             to={`/club/${club.code}`}
-            className="flex items-center gap-3 rounded-xl border border-rule bg-cream px-3 py-3 transition hover:border-burgundy hover:shadow-sm"
+            className="flex min-w-0 w-full items-center gap-3 overflow-hidden rounded-xl border border-rule bg-cream px-3 py-3 transition hover:border-burgundy hover:shadow-sm"
           >
             {club.currentBook ? (
               <Cover
@@ -27,7 +27,7 @@ export function ClubList({ clubs, empty }: { clubs: JoinedClub[]; empty: string 
               </div>
             )}
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold">{club.name}</span>
+              <span className="block truncate font-semibold">{club.name}</span>
               <span className="block truncate text-sm text-ink/70">
                 {club.currentBook?.title ?? 'No current book'}
               </span>

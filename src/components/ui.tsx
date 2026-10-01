@@ -44,7 +44,7 @@ export function ClubHeader({ name, action }: { name: string; action?: ReactNode 
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-rule bg-paper p-4 shadow-sm ${className}`}>
+    <section className={`min-w-0 rounded-2xl border border-rule bg-paper p-4 shadow-sm ${className}`}>
       {children}
     </section>
   )
@@ -112,7 +112,7 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-xl border border-rule bg-cream px-3 py-3 text-base outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
+      className={`min-w-0 w-full rounded-xl border border-rule bg-cream px-3 py-3 text-base outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
     />
   )
 }

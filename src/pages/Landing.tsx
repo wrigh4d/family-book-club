@@ -131,7 +131,7 @@ export function Landing() {
           </Card>
         </>
       ) : (
-        <div className="grid items-start gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
           <Card className="md:col-span-2">
             <h2 className="mb-3 font-display text-2xl">Your clubs</h2>
             {!clubsReady ? (
