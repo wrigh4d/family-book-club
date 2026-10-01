@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Button, Card, CardTitle, Cover, ErrorBanner, Subhead, TextArea } from '../components/ui'
+import { CommentSection } from '../components/CommentSection'
+import { Card, CardTitle, Cover, ErrorBanner } from '../components/ui'
 import { groupRatingLabel, isSameClubBook } from '../lib/bookStatus'
 import { friendlyFirebaseError } from '../lib/errors'
 import { resolveCurrentBook, saveHistoryComment } from '../lib/store'
@@ -35,14 +35,8 @@ export function HistoryPage() {
               <HistoryBookCard
                 book={book}
                 members={state.members}
-                uid={uid}
-                onSave={async (text) => {
-                  try {
-                    await saveHistoryComment(code, book.id, uid, text)
-                  } catch (err) {
-                    setError(friendlyFirebaseError(err))
-                  }
-                }}
+                onSave={(text) => saveHistoryComment(code, book.id, uid, text)}
+                onError={(err) => setError(friendlyFirebaseError(err))}
               />
             </li>
           ))}
@@ -55,17 +49,14 @@ export function HistoryPage() {
 function HistoryBookCard({
   book,
   members,
-  uid,
   onSave,
+  onError,
 }: {
   book: HistoryBook
   members: Member[]
-  uid: string
   onSave: (text: string) => Promise<void>
+  onError: (err: unknown) => void
 }) {
-  const remote = (book.notes?.[uid] ?? '').trim()
-  const [draft, setDraft] = useState(remote)
-  const [busy, setBusy] = useState(false)
   const comments = Object.entries(book.notes ?? {})
     .map(([id, text]) => ({
       id,
@@ -81,15 +72,6 @@ function HistoryBookCard({
         })
       : null
 
-  async function handleSave() {
-    setBusy(true)
-    try {
-      await onSave(draft)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <Card className="flex flex-col gap-4">
       <div className="flex gap-3">
@@ -103,32 +85,12 @@ function HistoryBookCard({
           {finished ? <p className="text-xs text-ink/50">{finished}</p> : null}
         </div>
       </div>
-      <div>
-        <Subhead>Comments</Subhead>
-        {comments.length === 0 ? (
-          <p className="mb-3 text-sm text-ink/55">No comments yet.</p>
-        ) : (
-          <ul className="mb-3 flex flex-col gap-3">
-            {comments.map((row) => (
-              <li key={row.id} className="rounded-xl border border-rule/50 bg-cream/90 px-3.5 py-2.5">
-                <p className="text-xs font-semibold text-ink/60">{row.name}</p>
-                <p className="whitespace-pre-wrap text-sm">{row.text}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-        <TextArea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Add your comment here..."
-          aria-label={`Your comment on ${book.title}`}
-        />
-        <div className="mt-2 flex justify-end">
-          <Button type="button" variant="ghost" disabled={busy} onClick={() => void handleSave()}>
-            Add comment
-          </Button>
-        </div>
-      </div>
+      <CommentSection
+        comments={comments}
+        ariaLabel={`Your comment on ${book.title}`}
+        onSave={onSave}
+        onError={onError}
+      />
     </Card>
   )
 }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { CommentSection } from '../components/CommentSection'
 import { availableShortlist, groupRating, pastHistoryBooks } from '../lib/bookStatus'
 import { friendlyFirebaseError } from '../lib/errors'
 import {
@@ -11,7 +12,7 @@ import {
   recCoverClass,
   recsFill,
 } from '../lib/meetingStage'
-import { isOwner, resolveCurrentBook, startConcluding } from '../lib/store'
+import { isOwner, resolveCurrentBook, savePersonalNote, startConcluding } from '../lib/store'
 import { topWantedGenre } from '../lib/suggestion'
 import { useBookFacts } from '../lib/useBookFacts'
 import { useClub } from '../lib/useClub'
@@ -23,7 +24,7 @@ import {
   roomLine,
   useStageLayout,
 } from './presentHelpers'
-import { CommentsPanel, NowReading, RatingsPanel, RecommendationsPanel, ShortlistCarousel } from './presentPanels'
+import { NowReading, RatingsPanel, RecommendationsPanel, ShortlistCarousel } from './presentPanels'
 
 export function Present() {
   const { code, uid, displayName, state, error, setError } = useClub()
@@ -46,12 +47,10 @@ export function Present() {
   const ratedIds = new Set(voice.ratings.map((row) => row.id))
   const waiting = state.members.filter((member) => !ratedIds.has(member.id))
   const mode = meetingMode(stage, {
-    comments: voice.comments.length,
+    comments: Math.max(voice.comments.length, 1),
     ratings: voice.ratings.length,
     recs: recs.length,
   })
-  const showVoice = voice.comments.length > 0 || voice.ratings.length > 0
-  const showSide = showVoice || recs.length > 0
   const readers = state.members.length === 1 ? '1 reader' : `${state.members.length} readers`
   const together =
     past.length === 0
@@ -119,19 +118,23 @@ export function Present() {
           previous={previous}
           quiet={voice.comments.length === 0 && voice.ratings.length === 0}
         />
-        {showSide ? (
-          <div className={meetingSideClass(mode)}>
-            {showVoice ? (
-              <div className={meetingVoiceClass(mode)}>
-                {voice.comments.length > 0 ? <CommentsPanel comments={voice.comments} /> : null}
-                {voice.ratings.length > 0 ? <RatingsPanel ratings={voice.ratings} /> : null}
-              </div>
-            ) : null}
-            {recs.length > 0 ? (
-              <RecommendationsPanel recs={recs} fill={recsFill(mode)} cover={recCoverClass(mode)} />
-            ) : null}
+        <div className={meetingSideClass(mode)}>
+          <div className={meetingVoiceClass(mode)}>
+            <section className="meeting-panel flex min-w-0 flex-col rounded-3xl border border-gold/35 bg-burgundy/30 p-4 ring-1 ring-gold/10">
+              <CommentSection
+                tone="meeting"
+                comments={voice.comments}
+                ariaLabel="Comment on the current book"
+                onSave={(text) => savePersonalNote(code, state, uid, text)}
+                onError={(err) => setError(friendlyFirebaseError(err))}
+              />
+            </section>
+            {voice.ratings.length > 0 ? <RatingsPanel ratings={voice.ratings} /> : null}
           </div>
-        ) : null}
+          {recs.length > 0 ? (
+            <RecommendationsPanel recs={recs} fill={recsFill(mode)} cover={recCoverClass(mode)} />
+          ) : null}
+        </div>
         <ShortlistCarousel books={shortlist} members={state.members} />
       </div>
     </div>

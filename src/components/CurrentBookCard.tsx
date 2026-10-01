@@ -3,6 +3,7 @@ import { availableShortlist, clubBookStatus, clubBookStatusLabel } from '../lib/
 import {
   changeCurrentBook,
   currentHistoryBook,
+  personalNotes,
   rateCurrentBook,
   resolveCurrentBook,
   savePersonalNote,
@@ -11,7 +12,8 @@ import { useBookFacts } from '../lib/useBookFacts'
 import { useBookSearch } from '../lib/useBookSearch'
 import type { ClubState, CurrentBook } from '../types'
 import { BookPickList, BookRow, BookSearchForm } from './bookSearch'
-import { Button, Card, CardTitle, Cover, ErrorBanner, Subhead, TextArea, TextButton } from './ui'
+import { CommentSection } from './CommentSection'
+import { Button, Card, CardTitle, Cover, ErrorBanner, Subhead, TextButton } from './ui'
 
 export function CurrentBookCard({
   code,
@@ -29,17 +31,15 @@ export function CurrentBookCard({
   const current = resolveCurrentBook(state)
   const history = currentHistoryBook(state)
   const myRating = history?.ratings[uid]
-  const remoteNote = history?.notes?.[uid] ?? ''
-  const currentId = current?.olid ?? ''
-  const [draft, setDraft] = useState<{ bookId: string; text: string | null }>({
-    bookId: currentId,
-    text: null,
-  })
   const [changeForId, setChangeForId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const note = (draft.bookId === currentId ? draft.text : null) ?? remoteNote
   const changing = Boolean(current && changeForId === current.olid)
   const facts = useBookFacts(current)
+  const comments = personalNotes(state).map((row) => ({
+    id: row.uid,
+    name: row.name,
+    text: row.text,
+  }))
 
   if (!current) {
     return (
@@ -74,7 +74,7 @@ export function CurrentBookCard({
         />
         <div className="min-w-0">
           <p className="font-display text-2xl leading-tight break-words">{current.title}</p>
-          <p className="mt-1 text-sm text-ink/70">{current.author}</p>
+          <p className="text-sm text-ink/70">{current.author}</p>
           {facts ? <p className="mt-1 text-sm text-ink/60">{facts}</p> : null}
         </div>
       </div>
@@ -111,16 +111,13 @@ export function CurrentBookCard({
               })}
             </div>
           </div>
-          <div>
-            <Subhead>Comment</Subhead>
-            <TextArea
-              value={note}
-              onChange={(event) => setDraft({ bookId: currentId, text: event.target.value })}
-              placeholder="Add your comment here..."
-              aria-label="Comment on the current book"
-            />
-            <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
-              {owner ? (
+          <CommentSection
+            comments={comments}
+            ariaLabel="Comment on the current book"
+            onError={onError}
+            onSave={(text) => savePersonalNote(code, state, uid, text)}
+            actions={
+              owner ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -129,16 +126,9 @@ export function CurrentBookCard({
                 >
                   Change book
                 </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => savePersonalNote(code, state, uid, note).catch(onError)}
-              >
-                Add comment
-              </Button>
-            </div>
-          </div>
+              ) : null
+            }
+          />
         </>
       )}
     </Card>
