@@ -14,6 +14,7 @@ import {
   type Rule,
   type SuggestionSnapshot,
 } from '../types'
+import { migrateBookComments } from './comments'
 
 function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
@@ -249,13 +250,6 @@ function asRatingMap(value: unknown): Record<string, number> {
   return out
 }
 
-function asNoteMap(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object') return {}
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([id, text]) => [id, String(text)]),
-  )
-}
-
 export function asHistory(id: string, data: Record<string, unknown>): HistoryBook {
   return {
     id,
@@ -267,7 +261,7 @@ export function asHistory(id: string, data: Record<string, unknown>): HistoryBoo
     genre: asGenre(data.genre),
     finishedAt: asNumber(data.finishedAt),
     ratings: asRatingMap(data.ratings),
-    notes: asNoteMap(data.notes),
+    comments: migrateBookComments({ comments: data.comments, notes: data.notes }),
     subjects: Array.isArray(data.subjects) ? data.subjects.map(String) : [],
   }
 }
