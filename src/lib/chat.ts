@@ -1,12 +1,13 @@
 import {
-  addDoc,
   collection,
+  doc,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   startAfter,
   type QueryDocumentSnapshot,
   type Unsubscribe,
@@ -89,16 +90,21 @@ export async function loadOlderMessages(
   return pageFromDocs(snap.docs)
 }
 
+export function reserveChatMessageId(code: string): string {
+  return doc(messagesQuery(code)).id
+}
+
 export async function sendChatMessage(
   code: string,
   uid: string,
   authorName: string,
   raw: string,
+  messageId: string,
 ): Promise<void> {
   const text = validateChatText(raw)
   const name = authorName.trim()
   if (!name) throw new Error('Enter your name before chatting.')
-  await addDoc(messagesQuery(code), {
+  await setDoc(doc(messagesQuery(code), messageId), {
     authorId: uid,
     authorName: name,
     text,

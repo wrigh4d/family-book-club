@@ -99,6 +99,11 @@ describe('mergeChatMessages', () => {
     ])
   })
 
+  it('keeps an outgoing message when the latest page is still empty', () => {
+    const outgoing = [{ id: 'local', authorId: 'u', authorName: 'Dad', text: 'hello', createdAt: 5 }]
+    expect(mergeChatMessages(outgoing, []).map((message) => message.text)).toEqual(['hello'])
+  })
+
   it('keeps a message that has slid out of the latest page', () => {
     const shown = [
       { id: 'm21', authorId: 'u', authorName: 'Dad', text: 'boundary', createdAt: 21 },

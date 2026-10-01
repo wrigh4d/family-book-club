@@ -1,13 +1,18 @@
 import { type FormEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button, ErrorBanner, TextInput } from '../components/ui'
-import { loadOlderMessages, sendChatMessage, subscribeRecentMessages } from '../lib/chat'
+import {
+  loadOlderMessages,
+  reserveChatMessageId,
+  sendChatMessage,
+  subscribeRecentMessages,
+} from '../lib/chat'
 import {
   CHAT_TEXT_MAX,
   formatChatTime,
   mergeChatMessages,
   validateChatText,
 } from '../lib/chatFormat'
-import { friendlyFirebaseError } from '../lib/errors'
+import { firebaseErrorCode, friendlyFirebaseError } from '../lib/errors'
 import {
   attachForegroundListener,
   enablePush,
@@ -22,12 +27,14 @@ import type { QueryDocumentSnapshot } from 'firebase/firestore'
 export function ChatPage() {
   const { code, uid, displayName, state, error, setError } = useClub()
   if (!uid || !displayName || !state || !code) return null
+  const memberName =
+    state.members.find((member) => member.id === uid)?.displayName.trim() || displayName
   return (
     <ChatRoom
       key={code}
       code={code}
       uid={uid}
-      displayName={displayName}
+      displayName={memberName}
       error={error}
       setError={setError}
     />
@@ -50,6 +57,7 @@ function ChatRoom({
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [draft, setDraft] = useState('')
+  const [sendError, setSendError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [pushState, setPushState] = useState<PushAvailability>(pushAvailability)
@@ -119,21 +127,38 @@ function ChatRoom({
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const snapshot = draft
+    const name = displayName.trim()
+    let text: string
     try {
-      validateChatText(snapshot)
+      text = validateChatText(snapshot)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Write a message first.')
+      setSendError(err instanceof Error ? err.message : 'Write a message first.')
       return
     }
+    if (!name) {
+      setSendError('Enter your name before chatting.')
+      return
+    }
+    const messageId = reserveChatMessageId(code)
+    const optimistic: ChatMessage = {
+      id: messageId,
+      authorId: uid,
+      authorName: name,
+      text,
+      createdAt: Date.now(),
+    }
     setBusy(true)
+    setSendError(null)
     setError(null)
     setDraft('')
+    setMessages((current) => mergeChatMessages(current, [optimistic]))
     stickToBottom.current = true
     try {
-      await sendChatMessage(code, uid, displayName, snapshot)
+      await sendChatMessage(code, uid, name, text, messageId)
     } catch (err) {
+      setMessages((current) => current.filter((message) => message.id !== messageId))
       setDraft(snapshot)
-      setError(friendlyFirebaseError(err))
+      setSendError(chatSendError(err))
     } finally {
       setBusy(false)
     }
@@ -197,35 +222,52 @@ function ChatRoom({
             ))}
           </ul>
         ) : (
-          <p className="m-auto max-w-sm text-center text-sm text-ink/70">
+          <p className="pointer-events-none m-auto max-w-sm text-center text-sm text-ink/70">
             No messages yet. Say hello — everyone in the club can see this room.
           </p>
         )}
       </div>
-      <form
-        onSubmit={(event) => void handleSend(event)}
-        className="sticky bottom-0 z-10 mt-auto flex gap-2 bg-cream py-3"
-      >
-        <TextInput
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          maxLength={CHAT_TEXT_MAX}
-          placeholder="Message the club"
-          aria-label="Message"
-          className="min-w-0 flex-1"
-          disabled={busy}
-        />
-        <Button
-          type="submit"
-          size="sm"
-          className="self-stretch"
-          disabled={busy || draft.trim().length === 0}
-        >
-          Send
-        </Button>
-      </form>
+      <div className="sticky bottom-0 z-10 mt-auto shrink-0 bg-cream">
+        <ErrorBanner message={sendError} />
+        <form onSubmit={(event) => void handleSend(event)} className="flex gap-2 py-3">
+          <TextInput
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value)
+              if (sendError) setSendError(null)
+            }}
+            maxLength={CHAT_TEXT_MAX}
+            placeholder="Message the club"
+            aria-label="Message"
+            enterKeyHint="send"
+            className="min-w-0 flex-1"
+            disabled={busy}
+          />
+          <Button
+            type="submit"
+            size="sm"
+            className="shrink-0 self-stretch"
+            disabled={busy || draft.trim().length === 0}
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            {busy ? 'Sending…' : 'Send'}
+          </Button>
+        </form>
+      </div>
     </div>
   )
+}
+
+function chatSendError(error: unknown): string {
+  const code = firebaseErrorCode(error)
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : ''
+  if (code === 'permission-denied' || /insufficient permissions/i.test(message)) {
+    return "Couldn't send that message. Firestore rejected it for this club."
+  }
+  return friendlyFirebaseError(error)
 }
 
 function MessageRow({ message, mine }: { message: ChatMessage; mine: boolean }) {
@@ -267,7 +309,7 @@ function PushNotice({
       return <PushBanner message="Notifications are on for this phone." />
     case 'unconfigured':
       return (
-        <PushBanner message="Messages work now. Phone notifications still need a Firebase web push key on this site." />
+        <PushBanner message="Phone notifications still need a Firebase web push key on this site." />
       )
     case 'unsupported':
       return (
