@@ -8,8 +8,6 @@ import {
   meetingRootClass,
   meetingSideClass,
   meetingVoiceClass,
-  recCoverClass,
-  recsFill,
 } from '../lib/meetingStage'
 import { isOwner, resolveCurrentBook, startConcluding } from '../lib/store'
 import { topWantedGenre } from '../lib/suggestion'
@@ -19,7 +17,6 @@ import {
   clubVoice,
   lastMeeting,
   presentActionClass,
-  recSlidesFromState,
   roomLine,
   useStageLayout,
 } from './presentHelpers'
@@ -27,7 +24,6 @@ import {
   MeetingComments,
   NowReading,
   RatingsPanel,
-  RecommendationsPanel,
   ShortlistCarousel,
 } from './presentPanels'
 
@@ -39,7 +35,6 @@ export function Present() {
   const owner = state && uid ? isOwner(state, uid) : false
   const facts = useBookFacts(current)
   const voice = useMemo(() => (state ? clubVoice(state) : { comments: [], ratings: [] }), [state])
-  const recs = useMemo(() => (state ? recSlidesFromState(state) : []), [state])
 
   if (!uid || !displayName || !state) return null
   if (!current) return <Navigate to={`/club/${code}`} replace />
@@ -54,7 +49,6 @@ export function Present() {
   const mode = meetingMode(stage, {
     comments: Math.max(voice.comments.length, 1),
     ratings: voice.ratings.length,
-    recs: recs.length,
   })
   const readers = state.members.length === 1 ? '1 reader' : `${state.members.length} readers`
   const together =
@@ -128,9 +122,6 @@ export function Present() {
             <MeetingComments comments={voice.comments} />
             {voice.ratings.length > 0 ? <RatingsPanel ratings={voice.ratings} /> : null}
           </div>
-          {recs.length > 0 ? (
-            <RecommendationsPanel recs={recs} fill={recsFill(mode)} cover={recCoverClass(mode)} />
-          ) : null}
         </div>
         <ShortlistCarousel books={shortlist} members={state.members} />
       </div>

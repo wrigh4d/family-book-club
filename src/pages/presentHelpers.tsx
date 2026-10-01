@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
 import { groupRating } from '../lib/bookStatus'
-import { meetingRecsFromRound } from '../lib/recs'
 import { commentsForDisplay } from '../lib/comments'
 import { currentHistoryBook } from '../lib/store'
 import type {
-  AppRecommendation,
   ClubState,
   HistoryBook,
   Member,
@@ -21,12 +19,6 @@ export type RatingLine = {
   id: string
   name: string
   stars: number
-}
-
-export type RecSlide = {
-  id: string
-  label: string
-  rec: AppRecommendation
 }
 
 export type Voice = {
@@ -57,26 +49,6 @@ export function clubVoice(state: ClubState): Voice {
   }
   ratings.sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name))
   return { comments, ratings }
-}
-
-export function recSlidesFromState(state: ClubState): RecSlide[] {
-  const recs = meetingRecsFromRound(state)
-  const slides: RecSlide[] = []
-  if (recs.genre) {
-    slides.push({
-      id: `rec-genre-${recs.genre.olid}`,
-      label: 'Genre favorite',
-      rec: recs.genre,
-    })
-  }
-  if (recs.ratings) {
-    slides.push({
-      id: `rec-ratings-${recs.ratings.olid}`,
-      label: 'From past ratings',
-      rec: recs.ratings,
-    })
-  }
-  return slides
 }
 
 export function lastMeeting(history: HistoryBook[]): LastMeeting | null {
