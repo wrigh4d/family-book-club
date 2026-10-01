@@ -13,7 +13,6 @@ export {
   changeCurrentBook,
   pickNextBook,
   rateCurrentBook,
-  saveHistoryComment,
   savePersonalNote,
   setStartingBook,
   startConcluding,
