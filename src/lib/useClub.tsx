@@ -59,26 +59,32 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     votesWaitedRoundId.current = null
     votesSeededRoundId.current = null
     if (!sessionKey || !uid || !displayName || !code) return
-    let stop: (() => void) | undefined
     let cancelled = false
-    joinClub(code, uid, displayName)
+
+    // Club docs are readable while signed in (membership not required for reads).
+    // Start listeners immediately; join/remember in parallel so load is not a waterfall.
+    const stop = subscribeClub(
+      code,
+      (club) => {
+        if (!cancelled) setSnapshot({ key: sessionKey, club })
+      },
+      (err) => {
+        if (!cancelled) setLocalError(friendlyFirebaseError(err))
+      },
+    )
+
+    void joinClub(code, uid, displayName)
       .then((membership) => {
         if (cancelled) return
-        stop = subscribeClub(
-          code,
-          (club) => setSnapshot({ key: sessionKey, club }),
-          (err) => setLocalError(friendlyFirebaseError(err)),
-        )
-        void rememberClubMembership(uid, code, membership).catch((err) => {
-          if (!cancelled) setLocalError(friendlyFirebaseError(err))
-        })
+        return rememberClubMembership(uid, code, membership)
       })
       .catch((err) => {
         if (!cancelled) setLocalError(friendlyFirebaseError(err))
       })
+
     return () => {
       cancelled = true
-      stop?.()
+      stop()
     }
   }, [sessionKey, uid, displayName, code])
 
