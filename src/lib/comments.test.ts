@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BookComment, Member } from '../types'
 import {
   appendBookComment,
+  commentsEmptyMessage,
   commentsForDisplay,
   formatCommentTime,
   migrateBookComments,
@@ -124,5 +125,16 @@ describe('formatCommentTime', () => {
   it('includes the year when needed', () => {
     const priorYear = new Date(2025, 11, 1, 9, 5).getTime()
     expect(formatCommentTime(priorYear, now, 'en-US')).toBe('Dec 1, 2025, 9:05 AM')
+  })
+})
+
+describe('commentsEmptyMessage', () => {
+  it('encourages the first comment when composing', () => {
+    expect(commentsEmptyMessage()).toBe('No comments yet. Be the first.')
+    expect(commentsEmptyMessage(false)).toBe('No comments yet. Be the first.')
+  })
+
+  it('uses view-only copy for History', () => {
+    expect(commentsEmptyMessage(true)).toBe('No comments.')
   })
 })
