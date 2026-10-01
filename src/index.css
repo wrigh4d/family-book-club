@@ -3,14 +3,16 @@
 @theme {
     --font-display: "Fraunces", Georgia, serif;
     --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
-    --color-ink: #1c1612;
-    --color-cream: #f3eee4;
-    --color-paper: #fffaf3;
-    --color-rule: #e4d9c6;
-    --color-burgundy: #7a2e24;
-    --color-burgundy-dark: #5c211b;
-    --color-gold: #b0894f;
-    --color-moss: #4d5b43;
+    --color-ink: #1a1410;
+    --color-cream: #f4efe6;
+    --color-paper: #fffcf7;
+    --color-rule: #e5d9c8;
+    --color-burgundy: #742c23;
+    --color-burgundy-dark: #561f19;
+    --color-gold: #a67c3d;
+    --color-moss: #4a5742;
+    --shadow-card: 0 1px 2px rgb(26 20 16 / 0.04), 0 10px 28px rgb(26 20 16 / 0.06);
+    --shadow-lift: 0 2px 6px rgb(26 20 16 / 0.06), 0 14px 32px rgb(26 20 16 / 0.09);
 }
 
 html,
@@ -26,7 +28,11 @@ html {
 
 body {
     margin: 0;
-    background: var(--color-cream);
+    background:
+        radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--color-gold) 12%, transparent), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--color-burgundy) 8%, transparent), transparent 50%),
+        var(--color-cream);
+    background-attachment: fixed;
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
