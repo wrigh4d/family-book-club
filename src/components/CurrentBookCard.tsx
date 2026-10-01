@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { availableShortlist, clubBookStatus, clubBookStatusLabel } from '../lib/bookStatus'
 import {
   changeCurrentBook,
+  clubBookComments,
   currentHistoryBook,
-  personalNotes,
   rateCurrentBook,
   resolveCurrentBook,
   savePersonalNote,
@@ -35,8 +35,8 @@ export function CurrentBookCard({
   const [busy, setBusy] = useState(false)
   const changing = Boolean(current && changeForId === current.olid)
   const facts = useBookFacts(current)
-  const comments = personalNotes(state).map((row) => ({
-    id: row.uid,
+  const comments = clubBookComments(state).map((row) => ({
+    id: row.id,
     name: row.name,
     text: row.text,
   }))

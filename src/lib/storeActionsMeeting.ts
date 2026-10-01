@@ -1,5 +1,6 @@
 import {
   collection,
+  type DocumentReference,
   deleteDoc,
   deleteField,
   doc,
@@ -24,6 +25,7 @@ import { fetchWorkSubjects, isSameRecommendedBook } from './openLibrary'
 import { computeMeetingRecs } from './recs'
 import { scoreNominations } from './suggestion'
 import { stateWithHistory } from './storeLive'
+import { appendBookComment, migrateBookComments } from './comments'
 import {
   assertOwner,
   currentHistoryId,
@@ -222,7 +224,7 @@ async function upsertCurrentHistory(
   code: string,
   state: ClubState,
   uid: string,
-  patch: { stars?: number; note?: string },
+  stars: number,
 ): Promise<void> {
   const book = resolveCurrentBook(state)
   const historyId = currentHistoryId(state)
@@ -245,9 +247,7 @@ async function upsertCurrentHistory(
     genre: asGenre(book.genre),
   }
   if (existing) {
-    const fields: Record<string, unknown> = { ...base }
-    if (patch.stars != null) fields[`ratings.${uid}`] = patch.stars
-    if (patch.note != null) fields[`notes.${uid}`] = patch.note
+    const fields: Record<string, unknown> = { ...base, [`ratings.${uid}`]: stars }
     if ((existing.subjects ?? []).length === 0 && subjects.length > 0) {
       fields.subjects = subjects
     }
@@ -265,18 +265,47 @@ async function upsertCurrentHistory(
       row.ratings && typeof row.ratings === 'object'
         ? { ...(row.ratings as Record<string, number>) }
         : {}
-    const notes =
-      row.notes && typeof row.notes === 'object' ? { ...(row.notes as Record<string, string>) } : {}
-    if (patch.stars != null) ratings[uid] = patch.stars
-    if (patch.note != null) notes[uid] = patch.note
+    ratings[uid] = stars
     const existingSubjects = Array.isArray(row.subjects) ? row.subjects.map(String) : []
+    const comments = migrateBookComments(row)
     tx.set(historyRef, {
       ...base,
       finishedAt: row.finishedAt ?? Date.now(),
       ratings,
-      notes,
+      comments,
+      notes: deleteField(),
       subjects: existingSubjects.length > 0 ? existingSubjects : subjects,
     })
+  })
+}
+
+async function appendCommentToHistory(
+  historyRef: DocumentReference,
+  input: { uid: string; name: string; text: string },
+  createBase?: Record<string, unknown>,
+): Promise<void> {
+  const text = input.text.trim()
+  if (!text) return
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(historyRef)
+    const row = snap.exists() ? snap.data() : {}
+    const comments = appendBookComment(migrateBookComments(row), {
+      uid: input.uid,
+      name: input.name,
+      text,
+    })
+    const payload: Record<string, unknown> = {
+      comments,
+      notes: deleteField(),
+    }
+    if (!snap.exists()) {
+      if (!createBase) throw new Error('No current book.')
+      Object.assign(payload, createBase, {
+        finishedAt: Date.now(),
+        ratings: {},
+      })
+    }
+    tx.set(historyRef, payload, { merge: true })
   })
 }
 
@@ -286,7 +315,7 @@ export async function rateCurrentBook(
   uid: string,
   stars: number,
 ): Promise<void> {
-  await upsertCurrentHistory(code, state, uid, { stars })
+  await upsertCurrentHistory(code, state, uid, stars)
 }
 
 export async function savePersonalNote(
@@ -295,16 +324,43 @@ export async function savePersonalNote(
   uid: string,
   note: string,
 ): Promise<void> {
-  await upsertCurrentHistory(code, state, uid, { note: note.trim() })
+  const book = resolveCurrentBook(state)
+  const historyId = currentHistoryId(state)
+  if (!book || !historyId || !state.round) throw new Error('No current book.')
+  const name = state.members.find((member) => member.id === uid)?.displayName ?? 'Reader'
+  const historyRef = doc(clubRef(code), 'history', historyId)
+  const existing = state.history.find((row) => row.id === historyId)
+  let subjects = existing?.subjects ?? []
+  const olid = book.olid ?? existing?.olid ?? ''
+  if (olid && subjects.length === 0) {
+    subjects = await fetchWorkSubjects(olid)
+    if (subjects.length === 0) subjects = [book.genre]
+  }
+  await appendCommentToHistory(
+    historyRef,
+    { uid, name, text: note },
+    {
+      roundId: state.round.id,
+      olid,
+      title: book.title,
+      author: book.author,
+      coverUrl: book.coverUrl,
+      genre: asGenre(book.genre),
+      subjects,
+    },
+  )
 }
 
 export async function saveHistoryComment(
   code: string,
   historyId: string,
   uid: string,
+  name: string,
   note: string,
 ): Promise<void> {
-  await updateDoc(doc(clubRef(code), 'history', historyId), {
-    [`notes.${uid}`]: note.trim(),
+  await appendCommentToHistory(doc(clubRef(code), 'history', historyId), {
+    uid,
+    name,
+    text: note,
   })
 }

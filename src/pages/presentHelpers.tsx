@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { groupRating } from '../lib/bookStatus'
 import { meetingRecsFromRound } from '../lib/recs'
+import { commentsForDisplay } from '../lib/comments'
 import { currentHistoryBook } from '../lib/store'
 import type {
   AppRecommendation,
@@ -43,13 +44,13 @@ export function presentActionClass(): string {
 
 export function clubVoice(state: ClubState): Voice {
   const history = currentHistoryBook(state)
-  const notes = history?.notes ?? {}
   const scores = history?.ratings ?? {}
-  const comments: CommentLine[] = []
+  const comments: CommentLine[] = commentsForDisplay(
+    history?.comments ?? [],
+    state.members,
+  ).map((row) => ({ id: row.id, name: row.name, text: row.text }))
   const ratings: RatingLine[] = []
   for (const member of state.members) {
-    const comment = (notes[member.id] ?? '').trim()
-    if (comment) comments.push({ id: member.id, name: member.displayName, text: comment })
     const stars = scores[member.id]
     if (stars != null) ratings.push({ id: member.id, name: member.displayName, stars })
   }

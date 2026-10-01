@@ -1,4 +1,5 @@
 export {
+  clubBookComments,
   currentHistoryBook,
   currentHistoryId,
   isOwner,
