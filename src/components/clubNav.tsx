@@ -53,7 +53,7 @@ export function AccountMenu({
         aria-haspopup="menu"
         aria-label={`Account menu for ${name}`}
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-2 rounded-full border border-rule bg-paper py-1 pr-2 pl-1 outline-none focus-visible:ring-2 focus-visible:ring-burgundy"
+        className="flex min-h-11 items-center gap-2 rounded-full border border-rule bg-paper py-1 pr-2 pl-1 outline-none focus-visible:ring-2 focus-visible:ring-burgundy"
       >
         <span
           aria-hidden="true"
@@ -142,7 +142,7 @@ export function ClubTabBar({ items }: { items: ClubSection[] }) {
   return (
     <nav
       aria-label="Club sections"
-      className="grid shrink-0 grid-cols-4 border-t border-rule bg-paper pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] md:hidden"
+      className="grid shrink-0 grid-cols-4 border-t border-rule bg-paper pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] md:hidden"
     >
       {items.map((item) => (
         <Link
@@ -150,7 +150,7 @@ export function ClubTabBar({ items }: { items: ClubSection[] }) {
           to={item.to}
           aria-current={item.active ? 'page' : undefined}
           aria-label={item.unread ? `${item.label}, new messages` : item.label}
-          className={`flex flex-col items-center gap-1 px-1 text-[11px] font-semibold leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy ${
+          className={`flex min-h-12 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy ${
             item.active ? 'text-burgundy' : 'text-ink/50 hover:text-ink'
           }`}
         >
