@@ -23,14 +23,16 @@ import {
   useStageLayout,
 } from './presentHelpers'
 import {
-  FeaturedQuoteCard,
-  MeetingBackdrop,
   MeetingComments,
   NowReading,
-  ProgressBadge,
   RatingsPanel,
   ShortlistCarousel,
 } from './presentPanels'
+import {
+  FeaturedQuoteCard,
+  MeetingBackdrop,
+  ProgressBadge,
+} from './presentPolish'
 
 export function Present() {
   const { code, uid, displayName, state, error, setError } = useClub()
