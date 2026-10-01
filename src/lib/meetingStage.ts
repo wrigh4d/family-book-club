@@ -29,8 +29,8 @@ const TONE = 'bg-[radial-gradient(ellipse_at_top,#3a241c_0%,#1c1612_58%)] text-c
 export function meetingRootClass(mode: MeetingMode): string {
   const frame =
     mode.kind === 'scroll'
-      ? 'flex min-h-dvh flex-col'
-      : 'meeting-stage flex h-dvh flex-col overflow-hidden'
+      ? 'flex min-h-dvh flex-col pb-[env(safe-area-inset-bottom)]'
+      : 'meeting-stage flex h-dvh flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]'
   return `${frame} ${TONE}`
 }
 

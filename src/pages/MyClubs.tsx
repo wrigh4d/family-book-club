@@ -1,6 +1,6 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { ClubList } from '../components/ClubList'
-import { Button, Card, ErrorBanner, Page } from '../components/ui'
+import { Button, Card, ErrorBanner, LoadingState, Page } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useJoinedClubs } from '../lib/useJoinedClubs'
 
@@ -16,7 +16,7 @@ export function MyClubs() {
   if (!ready) {
     return (
       <Page>
-        <p>Getting you in…</p>
+        <LoadingState label="Getting you in…" />
       </Page>
     )
   }
@@ -34,7 +34,7 @@ export function MyClubs() {
       <ErrorBanner message={clubsError ?? error} />
       <Card>
         {!clubsReady ? (
-          <p className="text-sm text-ink/70">Loading your clubs…</p>
+          <LoadingState label="Loading your clubs…" />
         ) : (
           <ClubList
             clubs={clubs}

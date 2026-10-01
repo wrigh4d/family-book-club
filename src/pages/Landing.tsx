@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ClubList } from '../components/ClubList'
+import { InstallHint } from '../components/InstallHint'
 import {
   Brand,
   Button,
@@ -9,6 +10,7 @@ import {
   ErrorBanner,
   Field,
   GoogleSignInCard,
+  LoadingState,
   NameForm,
   Page,
   TextButton,
@@ -110,9 +112,10 @@ export function Landing() {
       </header>
 
       <ErrorBanner message={localError ?? clubsError ?? error} />
+      <InstallHint />
 
       {!ready ? (
-        <p>Getting you in…</p>
+        <LoadingState label="Getting you in…" />
       ) : !uid ? (
         <GoogleSignInCard onSignIn={() => void handleGoogle()} busy={busy} />
       ) : !displayName ? (
@@ -135,7 +138,7 @@ export function Landing() {
           <Card className="md:col-span-2">
             <h2 className="mb-3 font-display text-2xl">Your clubs</h2>
             {!clubsReady ? (
-              <p className="text-sm text-ink/70">Loading your clubs…</p>
+              <LoadingState label="Loading your clubs…" />
             ) : (
               <div className="flex flex-col gap-3">
                 <ClubList clubs={clubs} empty="Clubs you create or join will show up here." />

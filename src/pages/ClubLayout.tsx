@@ -11,6 +11,7 @@ import {
   ClubHeader,
   ErrorBanner,
   GoogleSignInCard,
+  LoadingState,
   NameForm,
   Page,
   TextButton,
@@ -72,7 +73,7 @@ function ClubGate() {
   if (!ready) {
     return (
       <Page>
-        <p>Getting you in…</p>
+        <LoadingState label="Getting you in…" />
       </Page>
     )
   }
@@ -122,7 +123,7 @@ function ClubGate() {
   if (!state) {
     return (
       <Page>
-        <p>Loading club…</p>
+        <LoadingState label="Loading club…" />
         <ErrorBanner message={error} />
         {error ? (
           <Button variant="ghost" onClick={() => navigate('/clubs')}>
@@ -183,8 +184,8 @@ export function ClubShell() {
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-cream text-ink">
-      <header className="relative z-20 shrink-0 bg-cream">
+    <div className="flex h-dvh flex-col bg-cream text-ink pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <header className="relative z-20 shrink-0 bg-cream pt-[env(safe-area-inset-top)]">
         <div className="mx-auto w-full max-w-5xl px-4 pt-4 md:px-6 md:pt-6">
           <ClubHeader
             name={state.club.name}
@@ -193,7 +194,7 @@ export function ClubShell() {
           <ClubSectionNav items={sections} className="mt-4" />
         </div>
       </header>
-      <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto">
+      <main id="main" tabIndex={-1} ref={mainRef} className="min-h-0 flex-1 overflow-y-auto outline-none overscroll-y-contain">
         <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col gap-6 px-4 py-4 md:px-6 md:py-6">
           <Outlet />
         </div>

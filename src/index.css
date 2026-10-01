@@ -29,6 +29,23 @@ body {
     background: var(--color-cream);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
+}
+
+::selection {
+    background: color-mix(in srgb, var(--color-burgundy) 28%, transparent);
+    color: var(--color-ink);
+}
+
+button,
+input,
+select,
+textarea,
+a {
+    touch-action: manipulation;
 }
 
 button,
@@ -64,6 +81,48 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.skip-link {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.75rem;
+    z-index: 100;
+    transform: translateY(-150%);
+    border-radius: 0.75rem;
+    background: var(--color-burgundy);
+    color: var(--color-cream);
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+}
+
+.loading-pulse {
+    display: inline-block;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 9999px;
+    background: var(--color-burgundy);
+    animation: loading-pulse 1s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 @keyframes shortlist-scroll {
     from {
         transform: translateX(0);
@@ -90,6 +149,11 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
     .shortlist-ticker-track {
         animation: none;
+    }
+
+    .loading-pulse {
+        animation: none;
+        opacity: 0.7;
     }
 }
 

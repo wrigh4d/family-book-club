@@ -16,11 +16,24 @@ export function Page({
 }) {
   const max = width === 'wide' ? 'max-w-5xl' : 'max-w-xl'
   return (
-    <div className="min-h-dvh bg-cream text-ink">
-      <div className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`}>
+    <div className="min-h-dvh bg-cream text-ink pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <div
+        id="main"
+        tabIndex={-1}
+        className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] outline-none sm:px-6 sm:pt-[max(2.5rem,env(safe-area-inset-top))] sm:pb-[max(2.5rem,env(safe-area-inset-bottom))]`}
+      >
         {children}
       </div>
     </div>
+  )
+}
+
+export function LoadingState({ label = 'Loading…' }: { label?: string }) {
+  return (
+    <p role="status" aria-live="polite" className="flex items-center gap-3 text-sm text-ink/70">
+      <span className="loading-pulse" aria-hidden="true" />
+      {label}
+    </p>
   )
 }
 
@@ -112,7 +125,7 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`min-w-0 w-full rounded-xl border border-rule bg-cream px-3 py-3 text-base outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
+      className={`min-h-11 min-w-0 w-full rounded-xl border border-rule bg-cream px-3 py-3 text-base outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 focus-visible:ring-2 ${props.className ?? ''}`}
     />
   )
 }
@@ -135,12 +148,12 @@ export function buttonClass(
     sm: 'rounded-lg px-3 py-2 text-sm',
   }[size]
   const styles = {
-    primary: 'bg-burgundy text-cream hover:bg-burgundy-dark hover:shadow-md hover:-translate-y-px',
-    secondary: 'bg-ink text-cream hover:bg-burgundy hover:shadow-md hover:-translate-y-px',
+    primary: 'bg-burgundy text-cream hover:bg-burgundy-dark hover:shadow-md motion-safe:hover:-translate-y-px',
+    secondary: 'bg-ink text-cream hover:bg-burgundy hover:shadow-md motion-safe:hover:-translate-y-px',
     ghost:
       'border border-burgundy bg-transparent text-burgundy hover:bg-burgundy hover:text-cream hover:shadow-md',
   }[variant]
-  return `inline-flex items-center justify-center text-center font-semibold transition duration-150 ease-out active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${sizes} ${styles}`
+  return `inline-flex min-h-11 items-center justify-center text-center font-semibold transition duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy focus-visible:ring-offset-2 focus-visible:ring-offset-cream motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${sizes} ${styles}`
 }
 
 export function Button({
@@ -169,7 +182,7 @@ export function Chip({
       type="button"
       {...props}
       aria-pressed={Boolean(selected)}
-      className={`rounded-full border px-3 py-1.5 text-sm transition duration-150 ease-out active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 ${
+      className={`min-h-9 rounded-full border px-3 py-1.5 text-sm transition duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy focus-visible:ring-offset-2 focus-visible:ring-offset-cream motion-safe:active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 ${
         selected
           ? 'border-burgundy bg-burgundy text-cream hover:bg-burgundy-dark hover:shadow-sm'
           : 'border-rule bg-cream text-ink hover:border-burgundy hover:bg-burgundy/10 hover:text-burgundy'
