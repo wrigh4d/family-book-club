@@ -7,7 +7,7 @@ import type {
   Nomination,
   Rule,
 } from '../types'
-import type { CommentLine, LastMeeting, RatingLine, RecSlide } from './presentHelpers'
+import type { LastMeeting, RatingLine, RecSlide } from './presentHelpers'
 
 export function NowReading({
   current,
@@ -64,7 +64,7 @@ export function NowReading({
               ) : waiting.length > 0 && ratedCount > 0 ? (
                 <p className="mt-2 text-sm text-cream/60">Still to rate: {waiting.join(', ')}</p>
               ) : null}
-              {quiet ? <p className="mt-2 text-sm text-cream/60">No comments yet</p> : null}
+              {quiet ? <p className="mt and-2 text-sm text-cream/60">No comments yet</p> : null}
             </div>
           </div>
         </div>
@@ -103,20 +103,6 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
       <p className="shrink-0 text-[11px] uppercase tracking-[0.22em] text-gold">{title}</p>
       <div className="meeting-panel-body mt-3 flex flex-col gap-3">{children}</div>
     </section>
-  )
-}
-
-export function CommentsPanel({ comments }: { comments: CommentLine[] }) {
-  const title = comments.length === 1 ? 'Comments · 1' : `Comments · ${comments.length}`
-  return (
-    <Panel title={title}>
-      {comments.map((line) => (
-        <blockquote key={line.id} className="border-l-2 border-gold/50 pl-3">
-          <p className="text-sm leading-snug text-cream">“{line.text}”</p>
-          <p className="mt-1 text-xs font-semibold text-gold">{line.name}</p>
-        </blockquote>
-      ))}
-    </Panel>
   )
 }
 
