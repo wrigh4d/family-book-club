@@ -13,7 +13,7 @@ export function ClubList({ clubs, empty }: { clubs: JoinedClub[]; empty: string 
         <li key={club.code}>
           <Link
             to={`/club/${club.code}`}
-            className="flex min-w-0 w-full items-center gap-3 overflow-hidden rounded-xl border border-rule bg-cream px-3 py-3 transition hover:border-burgundy hover:shadow-sm"
+            className="flex min-h-14 min-w-0 w-full items-center gap-3 overflow-hidden rounded-xl border border-rule bg-cream px-3 py-3 transition hover:border-burgundy hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy active:bg-rule/30"
           >
             {club.currentBook ? (
               <Cover
