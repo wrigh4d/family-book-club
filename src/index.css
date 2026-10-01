@@ -152,6 +152,21 @@ button:disabled {
     animation-play-state: paused;
 }
 
+@keyframes meeting-comment-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.4rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.meeting-comment {
+    animation: meeting-comment-in 420ms ease both;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .shortlist-ticker-track {
         animation: none;
@@ -160,6 +175,10 @@ button:disabled {
     .loading-pulse {
         animation: none;
         opacity: 0.7;
+    }
+
+    .meeting-comment {
+        animation: none;
     }
 }
 
