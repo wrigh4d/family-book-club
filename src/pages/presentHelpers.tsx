@@ -63,14 +63,14 @@ export function recSlidesFromState(state: ClubState): RecSlide[] {
   if (recs.genre) {
     slides.push({
       id: `rec-genre-${recs.genre.olid}`,
-      label: 'Most popular in this round’s genre',
+      label: 'Genre favorite',
       rec: recs.genre,
     })
   }
   if (recs.ratings) {
     slides.push({
       id: `rec-ratings-${recs.ratings.olid}`,
-      label: 'From past club ratings',
+      label: 'From past ratings',
       rec: recs.ratings,
     })
   }
