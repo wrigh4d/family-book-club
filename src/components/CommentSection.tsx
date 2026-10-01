@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
-import { commentsEmptyMessage, formatCommentTime } from '../lib/comments'
+import { commentsEmptyMessage, formatCommentTime, shouldShowCommentsButton } from '../lib/comments'
 import { Button, TextArea } from './ui'
 
 export type CommentItem = {
@@ -51,12 +51,20 @@ export function CommentSection(props: CommentSectionProps) {
   } = props
   const onSave = readOnly ? undefined : props.onSave
   const [open, setOpen] = useState(false)
+  const showButton = shouldShowCommentsButton(Boolean(readOnly), comments.length)
+
+  // History past books with no comments: hide the entry entirely (nothing to open).
+  if (!showButton && !actions) {
+    return null
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        {commentsLabel(comments.length)}
-      </Button>
+      {showButton ? (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)}>
+          {commentsLabel(comments.length)}
+        </Button>
+      ) : null}
       {actions}
       {open ? (
         <CommentsModal

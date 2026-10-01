@@ -161,6 +161,15 @@ export function commentsEmptyMessage(readOnly = false): string {
   return readOnly ? 'No comments.' : 'No comments yet. Be the first.'
 }
 
+/**
+ * Whether the Comments entry button should appear.
+ * History (readOnly) hides the button when there are no comments to view.
+ * Current-book compose keeps the button so an empty list can still open compose.
+ */
+export function shouldShowCommentsButton(readOnly: boolean, commentCount: number): boolean {
+  return !(readOnly && commentCount === 0)
+}
+
 /** Readable timestamp for a comment `at` millis. Empty when unknown. */
 export function formatCommentTime(millis: number, now = Date.now(), locale?: string): string {
   if (!Number.isFinite(millis) || millis <= 0) return ''
