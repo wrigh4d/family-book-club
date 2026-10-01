@@ -6,6 +6,7 @@ import {
   commentsForDisplay,
   formatCommentTime,
   migrateBookComments,
+  shouldShowCommentsButton,
   sortCommentsNewestFirst,
 } from './comments'
 
@@ -136,5 +137,21 @@ describe('commentsEmptyMessage', () => {
 
   it('uses view-only copy for History', () => {
     expect(commentsEmptyMessage(true)).toBe('No comments.')
+  })
+})
+
+describe('shouldShowCommentsButton', () => {
+  it('hides the button for read-only History books with no comments', () => {
+    expect(shouldShowCommentsButton(true, 0)).toBe(false)
+  })
+
+  it('shows the button for read-only History books that have comments', () => {
+    expect(shouldShowCommentsButton(true, 1)).toBe(true)
+    expect(shouldShowCommentsButton(true, 3)).toBe(true)
+  })
+
+  it('keeps the button for current-book compose even when empty', () => {
+    expect(shouldShowCommentsButton(false, 0)).toBe(true)
+    expect(shouldShowCommentsButton(false, 2)).toBe(true)
   })
 })
