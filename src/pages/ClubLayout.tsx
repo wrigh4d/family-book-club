@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, useNavigate, useParams } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import {
   AccentRule,
   Brand,
@@ -34,13 +34,13 @@ function ClubGate() {
     error,
     setError,
     setDisplayName,
+    code,
     signInWithGoogle,
     signOut,
   } = useClub()
   const navigate = useNavigate()
   const [authBusy, setAuthBusy] = useState(false)
   const [copied, setCopied] = useState(false)
-  const { code } = useParams()
 
   if (!code) {
     return (

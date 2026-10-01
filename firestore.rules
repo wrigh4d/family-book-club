@@ -1,5 +1,5 @@
 rules_version = '2';
-// family-book-club rules v6
+// family-book-club rules v7
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -14,6 +14,26 @@ service cloud.firestore {
     match /users/{userId} {
       allow get, write: if isSelf(userId);
       allow list: if false;
+
+      match /fcmTokens/{tokenId} {
+        allow read, delete: if isSelf(userId);
+        allow create, update: if isSelf(userId)
+          && request.resource.data.keys().hasOnly(['token', 'origin', 'base', 'updatedAt'])
+          && request.resource.data.token is string
+          && request.resource.data.token.size() > 20
+          && request.resource.data.token.size() < 4096
+          && request.resource.data.origin is string
+          && request.resource.data.origin.size() < 200
+          && (
+            request.resource.data.origin.matches('https://.+')
+            || request.resource.data.origin.matches('http://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?')
+          )
+          && request.resource.data.base is string
+          && request.resource.data.base.size() > 0
+          && request.resource.data.base.size() < 200
+          && request.resource.data.base.matches('/.*')
+          && request.resource.data.updatedAt == request.time;
+      }
     }
 
     // Collection-group queries need this recursive match. Signed-in users can
@@ -88,6 +108,19 @@ service cloud.firestore {
       match /history/{itemId} {
         allow read: if signedIn();
         allow write: if isMember();
+      }
+
+      match /messages/{messageId} {
+        allow read: if isMember();
+        allow create: if isMember()
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName == get(memberDoc()).data.displayName
+          && request.resource.data.text is string
+          && request.resource.data.text.matches('.*\\S.*')
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
       }
 
       match /rounds/{roundId} {

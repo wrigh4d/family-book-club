@@ -29,6 +29,7 @@ jobs:
       - run: npm run build
         env:
           VITE_BASE: /family-book-club/
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
       - name: SPA fallback for GitHub Pages
         run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3

@@ -6,6 +6,8 @@ import type {
   TextareaHTMLAttributes,
 } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import { useChatUnread } from '../lib/useChatUnread'
 
 export function Page({ children }: { children: ReactNode }) {
   return (
@@ -302,33 +304,44 @@ export function SessionBar({
 
 function ClubNav({ code }: { code: string }) {
   const { pathname } = useLocation()
+  const { uid } = useAuth()
+  const chatUnread = useChatUnread(code, uid, pathname)
 
   const items = [
     { id: 'club', to: `/club/${code}`, label: 'Club' },
     { id: 'shortlist', to: `/club/${code}/shortlist`, label: 'Shortlist' },
     { id: 'history', to: `/club/${code}/history`, label: 'Past books' },
+    { id: 'chat', to: `/club/${code}/chat`, label: 'Chat' },
   ]
 
   return (
     <nav
       aria-label="Club sections"
-      className="grid grid-cols-3 gap-1 rounded-2xl border border-rule bg-paper p-1"
+      className="grid grid-cols-2 gap-1 rounded-2xl border border-rule bg-paper p-1 sm:grid-cols-4"
     >
       {items.map((item) => {
         const active = pathname === item.to
+        const unread = item.id === 'chat' && chatUnread
 
         return (
           <Link
             key={item.id}
             to={item.to}
             aria-current={active ? 'page' : undefined}
-            className={`rounded-xl px-1.5 py-2.5 text-center text-sm font-semibold leading-tight transition ${
+            aria-label={unread ? 'Chat, new messages' : undefined}
+            className={`relative rounded-xl px-1.5 py-2.5 text-center text-sm font-semibold leading-tight transition ${
               active
                 ? 'bg-burgundy text-cream shadow-sm'
                 : 'text-ink/70 hover:bg-cream hover:text-ink'
             }`}
           >
             {item.label}
+            {unread ? (
+              <span
+                aria-hidden="true"
+                className={`absolute top-2 right-2 h-2 w-2 rounded-full ${active ? 'bg-cream' : 'bg-gold'}`}
+              />
+            ) : null}
           </Link>
         )
       })}

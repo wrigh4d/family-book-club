@@ -1,5 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { AuthProvider } from './lib/auth'
+import { AuthProvider, useAuth } from './lib/auth'
+import { useForegroundPush } from './lib/useForegroundPush'
+import { ChatPage } from './pages/ChatPage'
 import { ClubHome } from './pages/ClubHome'
 import { ClubLayout } from './pages/ClubLayout'
 import { HistoryPage } from './pages/HistoryPage'
@@ -10,21 +12,30 @@ import { ShortlistPage } from './pages/ShortlistPage'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
 
+function AppRoutes() {
+  const { uid } = useAuth()
+  useForegroundPush(uid)
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/clubs" element={<MyClubs />} />
+      <Route path="/club/:code" element={<ClubLayout />}>
+        <Route index element={<ClubHome />} />
+        <Route path="shortlist" element={<ShortlistPage />} />
+        <Route path="history" element={<HistoryPage />} />
+        <Route path="present" element={<Present />} />
+        <Route path="chat" element={<ChatPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter basename={basename}>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/clubs" element={<MyClubs />} />
-          <Route path="/club/:code" element={<ClubLayout />}>
-            <Route index element={<ClubHome />} />
-            <Route path="shortlist" element={<ShortlistPage />} />
-            <Route path="history" element={<HistoryPage />} />
-            <Route path="present" element={<Present />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </AuthProvider>
   )

@@ -165,6 +165,14 @@ export type JoinedClub = ClubMembership & {
   currentBook: CurrentBook | null
 }
 
+export type ChatMessage = {
+  id: string
+  authorId: string
+  authorName: string
+  text: string
+  createdAt: number
+}
+
 export type ClubState = {
   club: Club
   members: Member[]
