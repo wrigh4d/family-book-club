@@ -58,7 +58,6 @@ export function ClubHome() {
     status === 'collecting' && round ? (
       <GenreVotes
         uid={uid}
-        members={state.members}
         votes={state.genreVotes}
         onSave={async (genres) => {
           try {
