@@ -11,6 +11,6 @@ Mobile (~390×844 @2x) captures for PR #1 (`polish/pwa-feel`).
 | `04-chat-composer.svg` | Chat composer sticky bar (illustrative; auth-gated) |
 | `05-present-header-notch.svg` | Present header notch safe-area (illustrative; auth-gated) |
 
-**Auth note:** Club tab bar, chat, and Present require Firebase Google sign-in. Those three shots are UI mocks matching the polished markup/classes. Landing + install hint are from the real branch preview.
+**Auth note:** Club tab bar, chat, and Present require Firebase Google sign-in. Those three shots are UI mocks matching the polished markup/classes (safe-area padding, min touch targets, sticky composer). Landing + install hint are from the real branch preview at `npm run preview`.
 
-**Present.tsx status:** Full Present with notch polish is ready locally. Remote Present is temporarily a stub after an accidental overwrite; restore by pushing local `src/pages/Present.tsx`.
+**Present notch polish:** shipped on this branch (`Present.tsx` + `presentHelpers.tsx` / `presentPanels.tsx`) — header uses `env(safe-area-inset-*)` and larger focusable actions.
