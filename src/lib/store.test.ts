@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { clubIdFromMemberPath, currentRoundHasVotes, memberWriteNeeded } from './store'
+import {
+  clubIdFromMemberPath,
+  currentRoundHasVotes,
+  memberWriteNeeded,
+  needsClubIndex,
+} from './store'
 
 describe('memberWriteNeeded', () => {
   it('creates when there is no member doc', () => {
@@ -25,6 +30,18 @@ describe('clubIdFromMemberPath', () => {
     expect(clubIdFromMemberPath('members/uid1')).toBeNull()
     expect(clubIdFromMemberPath('clubs/AB3K7Q/rules/r1')).toBeNull()
     expect(clubIdFromMemberPath('')).toBeNull()
+  })
+})
+
+describe('needsClubIndex', () => {
+  it('skips the scan once the user doc records a finished index', () => {
+    expect(needsClubIndex({ clubsIndexedAt: 1 })).toBe(false)
+  })
+
+  it('scans until that finished index is stored', () => {
+    expect(needsClubIndex(undefined)).toBe(true)
+    expect(needsClubIndex({})).toBe(true)
+    expect(needsClubIndex({ clubsIndexedAt: '1' })).toBe(true)
   })
 })
 

@@ -37,11 +37,14 @@ export const notifyChatMessage = onDocumentCreated(
     const clubName = club.get('name')
     const title = typeof clubName === 'string' && clubName.trim() ? clubName.trim() : 'Book club'
     const members = await db.collection(`clubs/${clubId}/members`).get()
+    const recipients = members.docs.filter((member) => member.id !== authorId)
+    const tokenSnaps = await Promise.all(
+      recipients.map((member) => db.collection(`users/${member.id}/fcmTokens`).get()),
+    )
     const targets: Target[] = []
 
-    for (const member of members.docs) {
-      if (member.id === authorId) continue
-      const tokens = await db.collection(`users/${member.id}/fcmTokens`).get()
+    tokenSnaps.forEach((tokens) => {
+      if (!tokens) return
       for (const row of tokens.docs) {
         const token = row.get('token')
         if (typeof token !== 'string' || !token) continue
@@ -59,7 +62,7 @@ export const notifyChatMessage = onDocumentCreated(
         }
         targets.push({ token, ref: row.ref, link, icon })
       }
-    }
+    })
 
     if (targets.length === 0) return
 

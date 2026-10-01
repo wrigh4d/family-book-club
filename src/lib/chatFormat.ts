@@ -3,6 +3,18 @@ import type { ChatMessage } from '../types'
 export const CHAT_TEXT_MAX = 1000
 export const CHAT_PAGE_SIZE = 100
 
+/** `docsNewestFirst` is the raw descending query order. The last doc is the paging cursor. */
+export function recentChatPage<T>(
+  docsNewestFirst: readonly T[],
+  pageSize: number,
+): { hasMore: boolean; oldest: T | null } {
+  return {
+    hasMore: docsNewestFirst.length === pageSize,
+    oldest:
+      docsNewestFirst.length > 0 ? (docsNewestFirst[docsNewestFirst.length - 1] ?? null) : null,
+  }
+}
+
 export function validateChatText(raw: string): string {
   const text = raw.trim()
   if (!text) throw new Error('Write a message first.')

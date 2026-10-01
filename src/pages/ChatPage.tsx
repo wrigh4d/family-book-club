@@ -140,12 +140,13 @@ function ChatRoom({
       return
     }
     const messageId = reserveChatMessageId(code)
+    const createdAt = Date.now()
     const optimistic: ChatMessage = {
       id: messageId,
       authorId: uid,
       authorName: name,
       text,
-      createdAt: Date.now(),
+      createdAt,
     }
     setBusy(true)
     setSendError(null)
@@ -154,7 +155,7 @@ function ChatRoom({
     setMessages((current) => mergeChatMessages(current, [optimistic]))
     stickToBottom.current = true
     try {
-      await sendChatMessage(code, uid, name, text, messageId)
+      await sendChatMessage(code, uid, name, text, messageId, createdAt)
     } catch (err) {
       setMessages((current) => current.filter((message) => message.id !== messageId))
       setDraft(snapshot)

@@ -59,8 +59,8 @@ or `members/{uid}.role == 'owner'`. Members cannot change their own role.
 Do not commit `serviceAccountKey.json` or the Admin SDK. The web `apiKey` / `projectId` config is enough.
 
 Chat messages live at `clubs/{code}/messages`. Only a member can read or create them. The write must use that member’s
-Google user id and the display name stored on their member document, plus Firebase’s server time. Messages cannot be
-edited or deleted.
+Google user id and the display name stored on their member document, plus a timestamp within 10 minutes of Firebase’s
+clock. Messages cannot be edited or deleted.
 
 ## Phone notifications
 

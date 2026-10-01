@@ -124,11 +124,15 @@ export function currentHistoryBook(state: ClubState): HistoryBook | null {
 }
 
 export async function saveProfile(uid: string, displayName: string): Promise<void> {
-  await setDoc(
-    doc(db, 'users', uid),
-    { displayName: displayName.trim(), updatedAt: Date.now() },
-    { merge: true },
-  )
+  const ref = userRef(uid)
+  const snap = await getDoc(ref)
+  const payload: Record<string, unknown> = {
+    displayName: displayName.trim(),
+    updatedAt: Date.now(),
+  }
+  // New accounts have no legacy member rows, so they never need the one-time club scan.
+  if (!snap.exists()) payload.clubsIndexedAt = Date.now()
+  await setDoc(ref, payload, { merge: true })
 }
 
 function userRef(uid: string) {
@@ -146,9 +150,11 @@ function membershipRecord(info: { name: string; role: 'owner' | 'member'; joined
 async function writeUserClubMemberships(
   uid: string,
   memberships: Array<{ code: string; name: string; role: 'owner' | 'member'; joinedAt: number }>,
+  clubsIndexedAt?: number,
 ): Promise<void> {
-  if (memberships.length === 0) return
+  if (memberships.length === 0 && clubsIndexedAt == null) return
   const payload: Record<string, unknown> = { updatedAt: Date.now() }
+  if (clubsIndexedAt != null) payload.clubsIndexedAt = clubsIndexedAt
   for (const row of memberships) {
     payload[`clubs.${row.code}`] = membershipRecord(row)
   }
@@ -158,7 +164,9 @@ async function writeUserClubMemberships(
     if (!isNotFound(err)) throw err
     const clubs: Record<string, ReturnType<typeof membershipRecord>> = {}
     for (const row of memberships) clubs[row.code] = membershipRecord(row)
-    await setDoc(userRef(uid), { clubs, updatedAt: Date.now() }, { merge: true })
+    const created: Record<string, unknown> = { clubs, updatedAt: Date.now() }
+    if (clubsIndexedAt != null) created.clubsIndexedAt = clubsIndexedAt
+    await setDoc(userRef(uid), created, { merge: true })
   }
 }
 
@@ -171,14 +179,24 @@ export async function rememberClubMembership(
   await writeUserClubMemberships(uid, [{ code, ...info }])
 }
 
-async function collectDiscoveredClubCodes(uid: string): Promise<string[]> {
+/** A numeric `clubsIndexedAt` means the one-time club scan finished. */
+export function needsClubIndex(data: Record<string, unknown> | undefined): boolean {
+  return typeof data?.clubsIndexedAt !== 'number'
+}
+
+async function collectDiscoveredClubCodes(uid: string): Promise<{ codes: string[]; complete: boolean }> {
   const found = new Set<string>()
+  let complete = true
+  const miss = (err: unknown) => {
+    if (!isIgnorableQueryError(err)) throw err
+    complete = false
+  }
 
   try {
     const owned = await getDocs(query(collection(db, 'clubs'), where('createdBy', '==', uid)))
     for (const row of owned.docs) found.add(row.id)
   } catch (err) {
-    if (!isIgnorableQueryError(err)) throw err
+    miss(err)
   }
 
   try {
@@ -188,7 +206,7 @@ async function collectDiscoveredClubCodes(uid: string): Promise<string[]> {
       if (code) found.add(code)
     }
   } catch (err) {
-    if (!isIgnorableQueryError(err)) throw err
+    miss(err)
   }
 
   try {
@@ -201,46 +219,45 @@ async function collectDiscoveredClubCodes(uid: string): Promise<string[]> {
       if (code) found.add(code)
     }
   } catch (err) {
-    if (!isIgnorableQueryError(err)) throw err
+    miss(err)
   }
 
-  return [...found]
+  return { codes: [...found], complete }
 }
 
 export async function discoverAndRememberClubs(uid: string): Promise<void> {
-  const codes = await collectDiscoveredClubCodes(uid)
-  if (codes.length === 0) return
-
   const userSnap = await getDoc(userRef(uid))
-  const known = new Set(
-    parseUserClubs(userSnap.exists() ? dataOf(userSnap) : {}).map((row) => row.code),
-  )
-  const pending = codes.filter((code) => !known.has(code))
-  if (pending.length === 0) return
+  const data = userSnap.exists() ? dataOf(userSnap) : {}
+  if (!needsClubIndex(data)) return
 
+  const { codes, complete } = await collectDiscoveredClubCodes(uid)
+  const known = new Set(parseUserClubs(data).map((row) => row.code))
+  const pending = codes.filter((code) => !known.has(code))
   const toWrite: Array<{ code: string; name: string; role: 'owner' | 'member'; joinedAt: number }> =
     []
-  await Promise.all(
-    pending.map(async (code) => {
-      const [clubSnap, memberSnap] = await Promise.all([
-        getDoc(clubRef(code)),
-        getDoc(doc(clubRef(code), 'members', uid)),
-      ])
-      if (!clubSnap.exists() || !memberSnap.exists()) return
-      const club = asClub(code, dataOf(clubSnap))
-      const member = asMember(uid, dataOf(memberSnap))
-      toWrite.push({
-        code,
-        name: club.name,
-        role: member.role,
-        joinedAt: member.joinedAt,
-      })
-      if (memberSnap.data()?.uid !== uid) {
-        await updateDoc(memberSnap.ref, { uid }).catch(() => undefined)
-      }
-    }),
-  )
-  await writeUserClubMemberships(uid, toWrite)
+  if (pending.length > 0) {
+    await Promise.all(
+      pending.map(async (code) => {
+        const [clubSnap, memberSnap] = await Promise.all([
+          getDoc(clubRef(code)),
+          getDoc(doc(clubRef(code), 'members', uid)),
+        ])
+        if (!clubSnap.exists() || !memberSnap.exists()) return
+        const club = asClub(code, dataOf(clubSnap))
+        const member = asMember(uid, dataOf(memberSnap))
+        toWrite.push({
+          code,
+          name: club.name,
+          role: member.role,
+          joinedAt: member.joinedAt,
+        })
+        if (memberSnap.data()?.uid !== uid) {
+          await updateDoc(memberSnap.ref, { uid }).catch(() => undefined)
+        }
+      }),
+    )
+  }
+  await writeUserClubMemberships(uid, toWrite, complete ? Date.now() : undefined)
 }
 
 async function hydrateJoinedClubs(
@@ -289,9 +306,16 @@ export function subscribeJoinedClubs(
   let cancelled = false
   let discovered = false
   let latest: ClubMembership[] = []
+  let hydratedKey: string | null = null
 
   const emit = (memberships: ClubMembership[]) => {
     if (cancelled) return
+    if (!discovered && memberships.length === 0) return
+    const key = memberships
+      .map((row) => `${row.code}\n${row.name}\n${row.role}\n${row.joinedAt}`)
+      .join('\n')
+    if (key === hydratedKey) return
+    hydratedKey = key
     const myGeneration = ++generation
     void hydrateJoinedClubs(uid, memberships)
       .then((clubs) => {
@@ -300,6 +324,7 @@ export function subscribeJoinedClubs(
       })
       .catch((err) => {
         if (cancelled || myGeneration !== generation) return
+        if (hydratedKey === key) hydratedKey = null
         onError(err instanceof Error ? err : new Error(String(err)))
       })
   }
@@ -308,7 +333,7 @@ export function subscribeJoinedClubs(
     userRef(uid),
     (snap) => {
       latest = parseUserClubs(snap.exists() ? dataOf(snap) : {})
-      if (discovered || latest.length > 0) emit(latest)
+      emit(latest)
     },
     (err) => onError(err),
   )
@@ -399,15 +424,18 @@ export function memberWriteNeeded(
   return current === name ? null : 'rename'
 }
 
-export async function joinClub(code: string, uid: string, displayName: string): Promise<void> {
+export async function joinClub(
+  code: string,
+  uid: string,
+  displayName: string,
+): Promise<{ name: string; role: 'owner' | 'member'; joinedAt: number }> {
   const name = displayName.trim()
   if (!name) throw new Error('Enter your name.')
   const ref = clubRef(code)
-  const snap = await getDoc(ref)
+  const memberRef = doc(ref, 'members', uid)
+  const [snap, memberSnap] = await Promise.all([getDoc(ref), getDoc(memberRef)])
   if (!snap.exists()) throw new Error('No club with that code.')
   const data = snap.data()
-  const memberRef = doc(ref, 'members', uid)
-  const memberSnap = await getDoc(memberRef)
   const existingMember = memberSnap.exists() ? memberSnap.data() : null
   const write = memberWriteNeeded(existingMember, name)
   const role: 'owner' | 'member' =
@@ -436,7 +464,7 @@ export async function joinClub(code: string, uid: string, displayName: string): 
   }
   const clubName =
     typeof data.name === 'string' && data.name.trim() ? data.name.trim() : 'Book club'
-  await rememberClubMembership(uid, code, { name: clubName, role, joinedAt })
+  return { name: clubName, role, joinedAt }
 }
 
 export function subscribeClub(
@@ -656,7 +684,7 @@ export async function addNomination(
 ): Promise<string> {
   const full = await stateWithHistory(code, state)
   assertCanJoinShortlist(full, book)
-  await pruneShortlist(code, full)
+  await pruneLoadedShortlist(code, full)
   const listed = findMatchingClubBook(book, full.nominations)
   if (listed) return listed.id
   const ref = await addDoc(collection(clubRef(code), 'shortlist'), {
@@ -690,15 +718,18 @@ export async function removeFromShortlist(code: string, nominationId: string): P
   await deleteDoc(doc(clubRef(code), 'shortlist', nominationId))
 }
 
-export async function pruneShortlist(code: string, state: ClubState): Promise<void> {
-  const full = await stateWithHistory(code, state)
-  const stale = staleShortlist(full)
+async function pruneLoadedShortlist(code: string, state: ClubState): Promise<void> {
+  const stale = staleShortlist(state)
   if (stale.length === 0) return
   const batch = writeBatch(db)
   for (const book of stale) {
     batch.delete(doc(clubRef(code), 'shortlist', book.id))
   }
   await batch.commit()
+}
+
+export async function pruneShortlist(code: string, state: ClubState): Promise<void> {
+  await pruneLoadedShortlist(code, await stateWithHistory(code, state))
 }
 
 function snapshotFromState(
@@ -835,7 +866,7 @@ export async function pickNextBook(
   assertOwner(full, uid)
   if (!full.round) throw new Error('No active round.')
   if (book) assertCanBeNextBook(full, book)
-  await pruneShortlist(code, full)
+  await pruneLoadedShortlist(code, full)
   const shown = [
     full.round.genreRecommendation,
     full.round.ratingsRecommendation,

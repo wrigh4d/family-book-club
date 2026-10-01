@@ -8,6 +8,7 @@ import {
   isChatUnread,
   mergeChatMessages,
   readChatSeen,
+  recentChatPage,
   validateChatText,
   writeChatSeen,
 } from './chatFormat'
@@ -97,6 +98,21 @@ describe('asChatMessage', () => {
   })
 })
 
+describe('recentChatPage', () => {
+  it('uses the last doc of a full descending page as the older-messages cursor', () => {
+    const docs = Array.from({ length: 100 }, (_, index) => ({ id: `m${index}` }))
+    expect(recentChatPage(docs, 100)).toEqual({ hasMore: true, oldest: { id: 'm99' } })
+  })
+
+  it('stops paging when the descending page is short', () => {
+    expect(recentChatPage([{ id: 'newest' }, { id: 'older' }], 100)).toEqual({
+      hasMore: false,
+      oldest: { id: 'older' },
+    })
+    expect(recentChatPage([], 100)).toEqual({ hasMore: false, oldest: null })
+  })
+})
+
 describe('mergeChatMessages', () => {
   it('keeps the live copy when the same message is loaded twice', () => {
     const earlier = [
@@ -113,6 +129,17 @@ describe('mergeChatMessages', () => {
   it('keeps an outgoing message when the latest page is still empty', () => {
     const outgoing = [{ id: 'local', authorId: 'u', authorName: 'Dad', text: 'hello', createdAt: 5 }]
     expect(mergeChatMessages(outgoing, []).map((message) => message.text)).toEqual(['hello'])
+  })
+
+  it('keeps an optimistic id until the live page includes it', () => {
+    const optimistic = [
+      { id: 'local', authorId: 'u', authorName: 'Dad', text: 'hello', createdAt: 500 },
+    ]
+    const live = [{ id: 'older', authorId: 'u', authorName: 'Mom', text: 'earlier', createdAt: 400 }]
+    expect(mergeChatMessages(optimistic, live).map((message) => message.id)).toEqual([
+      'older',
+      'local',
+    ])
   })
 
   it('keeps a message that has slid out of the latest page', () => {

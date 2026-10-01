@@ -44,14 +44,24 @@ async function messagingRegistration(): Promise<ServiceWorkerRegistration | null
   })
 }
 
+function pushStampKey(uid: string): string {
+  return `family-book-club:fcm:${uid}`
+}
+
 async function saveToken(uid: string, token: string): Promise<void> {
   const id = await tokenDocId(token)
+  const origin = window.location.origin
+  const base = import.meta.env.BASE_URL
+  const stamp = `${id}\n${origin}\n${base}`
+  const key = pushStampKey(uid)
+  if (typeof localStorage !== 'undefined' && localStorage.getItem(key) === stamp) return
   await setDoc(doc(db, 'users', uid, 'fcmTokens', id), {
     token,
-    origin: window.location.origin,
-    base: import.meta.env.BASE_URL,
+    origin,
+    base,
     updatedAt: serverTimestamp(),
   })
+  if (typeof localStorage !== 'undefined') localStorage.setItem(key, stamp)
 }
 
 async function ensurePushSubscription(uid: string): Promise<boolean> {

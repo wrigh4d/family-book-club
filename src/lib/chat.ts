@@ -1,21 +1,19 @@
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
   setDoc,
   startAfter,
-  updateDoc,
+  Timestamp,
   type QueryDocumentSnapshot,
   type Unsubscribe,
 } from 'firebase/firestore'
 import type { ChatMessage } from '../types'
-import { asChatMessage, CHAT_PAGE_SIZE, validateChatText } from './chatFormat'
+import { asChatMessage, CHAT_PAGE_SIZE, recentChatPage, validateChatText } from './chatFormat'
 import { db } from './firebase'
 
 export type ChatPage = {
@@ -44,10 +42,11 @@ function pageFromDocs(docs: QueryDocumentSnapshot[]): ChatPage {
     if (message) messages.push(message)
   }
   messages.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+  const page = recentChatPage(docs, CHAT_PAGE_SIZE)
   return {
     messages,
-    hasMore: false,
-    oldest: docs.length > 0 ? (docs[docs.length - 1] ?? null) : null,
+    hasMore: page.hasMore,
+    oldest: page.oldest,
   }
 }
 
@@ -56,10 +55,9 @@ export function subscribeRecentMessages(
   onData: (page: ChatPage) => void,
   onError: (error: Error) => void,
 ): Unsubscribe {
-  // Ordering by createdAt hides a message until the server timestamp is filled in,
-  // so a refresh looks like the thread was erased. Read the whole room and sort here.
+  const recent = query(messagesQuery(code), orderBy('createdAt', 'desc'), limit(CHAT_PAGE_SIZE))
   return onSnapshot(
-    messagesQuery(code),
+    recent,
     (snap) => onData(pageFromDocs(snap.docs)),
     (error) => onError(error),
   )
@@ -92,28 +90,11 @@ export async function loadOlderMessages(
     limit(CHAT_PAGE_SIZE),
   )
   const snap = await getDocs(older)
-  const page = pageFromDocs(snap.docs)
-  return {
-    messages: page.messages,
-    hasMore: snap.docs.length === CHAT_PAGE_SIZE,
-    oldest: snap.docs.length > 0 ? (snap.docs[snap.docs.length - 1] ?? null) : null,
-  }
+  return pageFromDocs(snap.docs)
 }
 
 export function reserveChatMessageId(code: string): string {
   return doc(messagesQuery(code)).id
-}
-
-async function authorNameForSend(code: string, uid: string, fallback: string): Promise<string> {
-  const name = fallback.trim()
-  if (!name) throw new Error('Enter your name before chatting.')
-  const memberRef = doc(db, 'clubs', code, 'members', uid)
-  const memberSnap = await getDoc(memberRef)
-  if (!memberSnap.exists()) throw new Error('Join this club before chatting.')
-  const stored = memberSnap.data().displayName
-  if (stored === name) return name
-  await updateDoc(memberRef, { displayName: name })
-  return name
 }
 
 export async function sendChatMessage(
@@ -122,13 +103,15 @@ export async function sendChatMessage(
   authorName: string,
   raw: string,
   messageId: string,
+  createdAt: number,
 ): Promise<void> {
   const text = validateChatText(raw)
-  const name = await authorNameForSend(code, uid, authorName)
+  const name = authorName.trim()
+  if (!name) throw new Error('Enter your name before chatting.')
   await setDoc(doc(messagesQuery(code), messageId), {
     authorId: uid,
     authorName: name,
     text,
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.fromMillis(createdAt),
   })
 }

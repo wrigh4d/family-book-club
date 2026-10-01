@@ -9,6 +9,7 @@ import {
   isOwner,
   joinClub,
   migrateRoundNominationsToShortlist,
+  rememberClubMembership,
   seedGenreVotesFromPreviousRound,
   subscribeClub,
 } from './store'
@@ -61,13 +62,16 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     let stop: (() => void) | undefined
     let cancelled = false
     joinClub(code, uid, displayName)
-      .then(() => {
+      .then((membership) => {
         if (cancelled) return
         stop = subscribeClub(
           code,
           (club) => setSnapshot({ key: sessionKey, club }),
           (err) => setLocalError(friendlyFirebaseError(err)),
         )
+        void rememberClubMembership(uid, code, membership).catch((err) => {
+          if (!cancelled) setLocalError(friendlyFirebaseError(err))
+        })
       })
       .catch((err) => {
         if (!cancelled) setLocalError(friendlyFirebaseError(err))
