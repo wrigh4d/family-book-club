@@ -64,7 +64,7 @@ export function NowReading({
               ) : waiting.length > 0 && ratedCount > 0 ? (
                 <p className="mt-2 text-sm text-cream/60">Still to rate: {waiting.join(', ')}</p>
               ) : null}
-              {quiet ? <p className="mt and-2 text-sm text-cream/60">No comments yet</p> : null}
+              {quiet ? <p className="mt-2 text-sm text-cream/60">No comments yet</p> : null}
             </div>
           </div>
         </div>
