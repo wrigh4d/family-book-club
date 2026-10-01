@@ -80,6 +80,17 @@ describe('asChatMessage', () => {
     ).toEqual({ id: 'm1', authorId: 'uid', authorName: 'Dad', text: 'Hi', createdAt: 50 })
   })
 
+  it('reads a timestamp stored as seconds and nanoseconds', () => {
+    expect(
+      asChatMessage('m1', {
+        authorId: 'uid',
+        authorName: 'Dad',
+        text: 'Hi',
+        createdAt: { seconds: 1, nanoseconds: 500_000_000 },
+      })?.createdAt,
+    ).toBe(1500)
+  })
+
   it('drops a document that is missing a sender or a time', () => {
     expect(asChatMessage('m1', { text: 'Hi' })).toBeNull()
     expect(asChatMessage('m1', { authorId: 'uid', authorName: 'Dad', text: 'Hi' })).toBeNull()

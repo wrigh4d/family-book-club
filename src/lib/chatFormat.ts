@@ -23,13 +23,23 @@ export function formatChatTime(millis: number, now = Date.now(), locale?: string
   return `${day}, ${time}`
 }
 
+function timestampPart(value: object, key: string): number | null {
+  if (!(key in value)) return null
+  const part = (value as Record<string, unknown>)[key]
+  return typeof part === 'number' && Number.isFinite(part) ? part : null
+}
+
 function asMillis(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value
-  if (!value || typeof value !== 'object' || !('toMillis' in value)) return null
-  const toMillis = (value as { toMillis: unknown }).toMillis
-  if (typeof toMillis !== 'function') return null
-  const millis = (toMillis as () => unknown)()
-  return typeof millis === 'number' && Number.isFinite(millis) ? millis : null
+  if (!value || typeof value !== 'object') return null
+  if ('toMillis' in value && typeof value.toMillis === 'function') {
+    const millis = value.toMillis()
+    if (typeof millis === 'number' && Number.isFinite(millis)) return millis
+  }
+  const seconds = timestampPart(value, 'seconds') ?? timestampPart(value, '_seconds')
+  if (seconds == null) return null
+  const nanos = timestampPart(value, 'nanoseconds') ?? timestampPart(value, '_nanoseconds') ?? 0
+  return seconds * 1000 + nanos / 1e6
 }
 
 function asText(value: unknown): string {
