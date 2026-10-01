@@ -1,6 +1,7 @@
 import { CommentSection } from '../components/CommentSection'
 import { Card, CardTitle, Cover, ErrorBanner } from '../components/ui'
 import { groupRatingLabel, isSameClubBook } from '../lib/bookStatus'
+import { commentsForDisplay } from '../lib/comments'
 import { friendlyFirebaseError } from '../lib/errors'
 import { resolveCurrentBook, saveHistoryComment } from '../lib/store'
 import { useClub } from '../lib/useClub'
@@ -32,7 +33,7 @@ export function HistoryPage() {
               <HistoryBookCard
                 book={book}
                 members={state.members}
-                onSave={(text) => saveHistoryComment(code, book.id, uid, text)}
+                onSave={(text) => saveHistoryComment(code, book.id, uid, displayName, text)}
                 onError={(err) => setError(friendlyFirebaseError(err))}
               />
             </li>
@@ -54,13 +55,11 @@ function HistoryBookCard({
   onSave: (text: string) => Promise<void>
   onError: (err: unknown) => void
 }) {
-  const comments = Object.entries(book.notes ?? {})
-    .map(([id, text]) => ({
-      id,
-      name: members.find((member) => member.id === id)?.displayName ?? 'Reader',
-      text: text.trim(),
-    }))
-    .filter((row) => row.text.length > 0)
+  const comments = commentsForDisplay(book.comments ?? [], members).map((row) => ({
+    id: row.id,
+    name: row.name,
+    text: row.text,
+  }))
   const finished =
     book.finishedAt > 0
       ? new Date(book.finishedAt).toLocaleDateString(undefined, {

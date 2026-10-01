@@ -9,6 +9,7 @@ import {
   type HistoryBook,
 } from '../types'
 import { historyDocId } from './bookStatus'
+import { commentsForDisplay, type CommentDisplay } from './comments'
 import { db } from './firebase'
 
 
@@ -69,15 +70,18 @@ function userRef(uid: string) {
   return doc(db, 'users', uid)
 }
 
+/** All club comments on the current book, newest first. */
+export function clubBookComments(state: ClubState): CommentDisplay[] {
+  return commentsForDisplay(currentHistoryBook(state)?.comments ?? [], state.members)
+}
+
+/** @deprecated Prefer clubBookComments — kept for call-site compatibility during rename. */
 export function personalNotes(
   state: ClubState,
 ): Array<{ uid: string; name: string; text: string }> {
-  const notes = currentHistoryBook(state)?.notes ?? {}
-  return state.members
-    .map((member) => ({
-      uid: member.id,
-      name: member.displayName,
-      text: (notes[member.id] ?? '').trim(),
-    }))
-    .filter((row) => row.text.length > 0)
+  return clubBookComments(state).map((row) => ({
+    uid: row.id,
+    name: row.name,
+    text: row.text,
+  }))
 }
