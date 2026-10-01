@@ -7,7 +7,7 @@ import type {
   Nomination,
   Rule,
 } from '../types'
-import type { LastMeeting, RatingLine, RecSlide } from './presentHelpers'
+import type { CommentLine, LastMeeting, RatingLine, RecSlide } from './presentHelpers'
 
 export function NowReading({
   current,
@@ -93,6 +93,40 @@ export function NowReading({
           ) : null}
         </footer>
       ) : null}
+    </section>
+  )
+}
+
+/** Read-only animated club comments for Present (no compose input). */
+export function MeetingComments({ comments }: { comments: CommentLine[] }) {
+  const title =
+    comments.length === 0
+      ? 'Comments'
+      : comments.length === 1
+        ? 'Comments · 1'
+        : `Comments · ${comments.length}`
+  return (
+    <section className="meeting-panel flex min-w-0 flex-col rounded-3xl border border-gold/35 bg-burgundy/30 p-4 ring-1 ring-gold/10">
+      <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-cream">
+        <span aria-hidden="true" className="h-3.5 w-0.5 rounded-full bg-gold" />
+        {title}
+      </p>
+      {comments.length === 0 ? (
+        <p className="text-sm text-cream/60">No comments yet.</p>
+      ) : (
+        <ul className="meeting-panel-body meeting-comments mt-1 flex flex-col gap-2">
+          {comments.map((row, index) => (
+            <li
+              key={row.id}
+              className="meeting-comment rounded-xl border border-gold/25 bg-burgundy/35 px-3.5 py-2.5"
+              style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+            >
+              <p className="text-xs font-semibold text-gold">{row.name}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-snug text-cream">{row.text}</p>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
