@@ -23,7 +23,7 @@ export function HistoryPage() {
         <Card className="flex flex-col gap-3">
           <CardTitle>Nothing finished yet</CardTitle>
           <p className="text-sm text-ink/65">
-            Finished books land here with ratings and comments.
+            Finished books show ratings and comments here.
           </p>
         </Card>
       ) : (
@@ -59,6 +59,7 @@ function HistoryBookCard({
     id: row.id,
     name: row.name,
     text: row.text,
+    at: row.at,
   }))
   const finished =
     book.finishedAt > 0
@@ -83,7 +84,8 @@ function HistoryBookCard({
       </div>
       <CommentSection
         comments={comments}
-        ariaLabel={`Your comment on ${book.title}`}
+        bookTitle={book.title}
+        ariaLabel={`Comment on ${book.title}`}
         onSave={onSave}
         onError={onError}
       />

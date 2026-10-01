@@ -155,3 +155,24 @@ export function commentsForDisplay(
     })
     .filter((row): row is CommentDisplay => row != null)
 }
+
+/** Readable timestamp for a comment `at` millis. Empty when unknown. */
+export function formatCommentTime(millis: number, now = Date.now(), locale?: string): string {
+  if (!Number.isFinite(millis) || millis <= 0) return ''
+  const date = new Date(millis)
+  if (Number.isNaN(date.getTime())) return ''
+  const today = new Date(now)
+  const time = date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })
+  const sameDay =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  if (sameDay) return `Today, ${time}`
+  const sameYear = date.getFullYear() === today.getFullYear()
+  if (sameYear) {
+    const day = date.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
+    return `${day}, ${time}`
+  }
+  const day = date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${day}, ${time}`
+}

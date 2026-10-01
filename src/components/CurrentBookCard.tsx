@@ -39,6 +39,7 @@ export function CurrentBookCard({
     id: row.id,
     name: row.name,
     text: row.text,
+    at: row.at,
   }))
 
   if (!current) {
@@ -113,6 +114,7 @@ export function CurrentBookCard({
           </div>
           <CommentSection
             comments={comments}
+            bookTitle={current.title}
             ariaLabel="Comment on the current book"
             onError={onError}
             onSave={(text) => savePersonalNote(code, state, uid, text)}

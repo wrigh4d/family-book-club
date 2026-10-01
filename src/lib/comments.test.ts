@@ -3,6 +3,7 @@ import type { BookComment, Member } from '../types'
 import {
   appendBookComment,
   commentsForDisplay,
+  formatCommentTime,
   migrateBookComments,
   sortCommentsNewestFirst,
 } from './comments'
@@ -99,5 +100,29 @@ describe('sortCommentsNewestFirst', () => {
         { id: 'c', uid: 'u', name: 'C', text: 'c', at: 2 },
       ]).map((row) => row.id),
     ).toEqual(['b', 'c', 'a'])
+  })
+})
+
+describe('formatCommentTime', () => {
+  const now = new Date(2026, 8, 30, 18, 0).getTime()
+
+  it('returns empty for missing timestamps', () => {
+    expect(formatCommentTime(0, now, 'en-US')).toBe('')
+    expect(formatCommentTime(-1, now, 'en-US')).toBe('')
+  })
+
+  it('labels same-day comments with Today', () => {
+    const sameDay = new Date(2026, 8, 30, 15, 42).getTime()
+    expect(formatCommentTime(sameDay, now, 'en-US')).toBe('Today, 3:42 PM')
+  })
+
+  it('shows month and day within the same year', () => {
+    const earlier = new Date(2026, 8, 29, 15, 42).getTime()
+    expect(formatCommentTime(earlier, now, 'en-US')).toBe('Sep 29, 3:42 PM')
+  })
+
+  it('includes the year when needed', () => {
+    const priorYear = new Date(2025, 11, 1, 9, 5).getTime()
+    expect(formatCommentTime(priorYear, now, 'en-US')).toBe('Dec 1, 2025, 9:05 AM')
   })
 })

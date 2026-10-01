@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react'
 import { Cover } from '../components/ui'
+import { formatCommentTime } from '../lib/comments'
 import { formatBookFacts } from '../lib/bookMeta'
 import type {
   CurrentBook,
@@ -115,16 +116,29 @@ export function MeetingComments({ comments }: { comments: CommentLine[] }) {
         <p className="text-sm text-cream/60">No comments yet.</p>
       ) : (
         <ul className="meeting-panel-body meeting-comments mt-1 flex flex-col gap-2">
-          {comments.map((row, index) => (
-            <li
-              key={row.id}
-              className="meeting-comment rounded-xl border border-gold/25 bg-burgundy/35 px-3.5 py-2.5"
-              style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
-            >
-              <p className="text-xs font-semibold text-gold">{row.name}</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-snug text-cream">{row.text}</p>
-            </li>
-          ))}
+          {comments.map((row, index) => {
+            const when = formatCommentTime(row.at)
+            return (
+              <li
+                key={row.id}
+                className="meeting-comment rounded-xl border border-gold/25 bg-burgundy/35 px-3.5 py-2.5"
+                style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <p className="text-xs font-semibold text-gold">{row.name}</p>
+                  {when ? (
+                    <time
+                      dateTime={new Date(row.at).toISOString()}
+                      className="text-[11px] tabular-nums text-cream/50"
+                    >
+                      {when}
+                    </time>
+                  ) : null}
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-snug text-cream">{row.text}</p>
+              </li>
+            )
+          })}
         </ul>
       )}
     </section>
