@@ -2,13 +2,12 @@ import { CommentSection } from '../components/CommentSection'
 import { Card, CardTitle, Cover, ErrorBanner } from '../components/ui'
 import { groupRatingLabel, isSameClubBook } from '../lib/bookStatus'
 import { commentsForDisplay } from '../lib/comments'
-import { friendlyFirebaseError } from '../lib/errors'
-import { resolveCurrentBook, saveHistoryComment } from '../lib/store'
+import { resolveCurrentBook } from '../lib/store'
 import { useClub } from '../lib/useClub'
 import type { HistoryBook, Member } from '../types'
 
 export function HistoryPage() {
-  const { code, uid, displayName, state, error, setError } = useClub()
+  const { uid, displayName, state, error } = useClub()
 
   if (!uid || !displayName || !state) return null
 
@@ -30,12 +29,7 @@ export function HistoryPage() {
         <ul className="grid gap-4 lg:grid-cols-2">
           {past.map((book) => (
             <li key={book.id}>
-              <HistoryBookCard
-                book={book}
-                members={state.members}
-                onSave={(text) => saveHistoryComment(code, book.id, uid, displayName, text)}
-                onError={(err) => setError(friendlyFirebaseError(err))}
-              />
+              <HistoryBookCard book={book} members={state.members} />
             </li>
           ))}
         </ul>
@@ -44,17 +38,7 @@ export function HistoryPage() {
   )
 }
 
-function HistoryBookCard({
-  book,
-  members,
-  onSave,
-  onError,
-}: {
-  book: HistoryBook
-  members: Member[]
-  onSave: (text: string) => Promise<void>
-  onError: (err: unknown) => void
-}) {
+function HistoryBookCard({ book, members }: { book: HistoryBook; members: Member[] }) {
   const comments = commentsForDisplay(book.comments ?? [], members).map((row) => ({
     id: row.id,
     name: row.name,
@@ -82,13 +66,7 @@ function HistoryBookCard({
           {finished ? <p className="text-xs text-ink/50">{finished}</p> : null}
         </div>
       </div>
-      <CommentSection
-        comments={comments}
-        bookTitle={book.title}
-        ariaLabel={`Comment on ${book.title}`}
-        onSave={onSave}
-        onError={onError}
-      />
+      <CommentSection comments={comments} bookTitle={book.title} readOnly />
     </Card>
   )
 }

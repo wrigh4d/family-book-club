@@ -156,6 +156,11 @@ export function commentsForDisplay(
     .filter((row): row is CommentDisplay => row != null)
 }
 
+/** Empty-state copy inside the comments modal. */
+export function commentsEmptyMessage(readOnly = false): string {
+  return readOnly ? 'No comments.' : 'No comments yet. Be the first.'
+}
+
 /** Readable timestamp for a comment `at` millis. Empty when unknown. */
 export function formatCommentTime(millis: number, now = Date.now(), locale?: string): string {
   if (!Number.isFinite(millis) || millis <= 0) return ''

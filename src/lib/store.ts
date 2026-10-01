@@ -17,7 +17,6 @@ export {
   pruneShortlist,
   rateCurrentBook,
   removeFromShortlist,
-  saveHistoryComment,
   savePersonalNote,
   seedGenreVotesFromPreviousRound,
   setGenreVotes,
