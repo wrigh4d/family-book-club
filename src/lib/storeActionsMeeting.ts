@@ -193,7 +193,7 @@ export async function pickNextBook(
   const batch = writeBatch(db)
   if (book) {
     const listed = findMatchingClubBook(book, full.nominations)
-  if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
+    if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
   }
   const roundRef = doc(collection(clubRef(code), 'rounds'))
   batch.set(roundRef, { status: 'collecting', startedAt: Date.now() })
