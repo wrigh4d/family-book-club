@@ -14,6 +14,7 @@ export type CommentLine = {
   id: string
   name: string
   text: string
+  at: number
 }
 
 export type RatingLine = {
@@ -48,7 +49,7 @@ export function clubVoice(state: ClubState): Voice {
   const comments: CommentLine[] = commentsForDisplay(
     history?.comments ?? [],
     state.members,
-  ).map((row) => ({ id: row.id, name: row.name, text: row.text }))
+  ).map((row) => ({ id: row.id, name: row.name, text: row.text, at: row.at }))
   const ratings: RatingLine[] = []
   for (const member of state.members) {
     const stars = scores[member.id]
