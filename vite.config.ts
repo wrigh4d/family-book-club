@@ -6,10 +6,10 @@ import type { Plugin } from 'vite'
 function familyBookClubManifest(): Plugin {
   let base = '/'
   const manifest = () => ({
-    name: 'Family Book Club',
+    name: 'Book Club',
     short_name: 'Book Club',
     description:
-      'A small family book club: share a code, set rules, nominate books, and present the next pick.',
+      'A book club you share with a code: add rules, nominate books, and present the next pick.',
     start_url: base,
     scope: base,
     display: 'standalone',

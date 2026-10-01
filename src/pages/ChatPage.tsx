@@ -1,13 +1,12 @@
-import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import {
-  Button,
-  Card,
-  CardTitle,
-  ErrorBanner,
-  TextInput,
-} from '../components/ui'
+import { type FormEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Button, ErrorBanner, TextInput } from '../components/ui'
 import { loadOlderMessages, sendChatMessage, subscribeRecentMessages } from '../lib/chat'
-import { CHAT_TEXT_MAX, formatChatTime, mergeChatMessages, validateChatText } from '../lib/chatFormat'
+import {
+  CHAT_TEXT_MAX,
+  formatChatTime,
+  mergeChatMessages,
+  validateChatText,
+} from '../lib/chatFormat'
 import { friendlyFirebaseError } from '../lib/errors'
 import {
   attachForegroundListener,
@@ -49,7 +48,6 @@ function ChatRoom({
   setError: (message: string | null) => void
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [ready, setReady] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
@@ -59,16 +57,28 @@ function ChatRoom({
   const liveOldest = useRef<QueryDocumentSnapshot | null>(null)
   const earlierCursor = useRef<QueryDocumentSnapshot | null>(null)
   const historyExhausted = useRef(false)
-  const scrollerRef = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLElement | null>(null)
   const stickToBottom = useRef(true)
   const anchorHeight = useRef<number | null>(null)
+
+  useLayoutEffect(() => {
+    const scroller = pageRef.current?.closest('main')
+    if (!scroller) return
+    scrollerRef.current = scroller
+    const onScroll = () => {
+      stickToBottom.current =
+        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80
+    }
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     return subscribeRecentMessages(
       code,
       (page) => {
         setMessages((current) => mergeChatMessages(current, page.messages))
-        setReady(true)
         liveOldest.current = page.oldest
         if (!historyExhausted.current && !earlierCursor.current) setHasMore(page.hasMore)
       },
@@ -160,7 +170,7 @@ function ChatRoom({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={pageRef} className="flex flex-1 flex-col gap-3">
       <ErrorBanner message={error} />
       <PushNotice
         state={pushState}
@@ -168,32 +178,17 @@ function ChatRoom({
         iosInstall={iosNeedsHomeScreen()}
         onEnable={() => void handleEnablePush()}
       />
-      <div
-        ref={scrollerRef}
-        onScroll={() => {
-          const scroller = scrollerRef.current
-          if (!scroller) return
-          stickToBottom.current =
-            scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80
-        }}
-        className="flex max-h-[calc(100dvh-18rem)] min-h-64 flex-col gap-3 overflow-y-auto"
-      >
+      <div className="flex flex-1 flex-col gap-3">
         {hasMore ? (
           <Button
             type="button"
             variant="ghost"
+            size="sm"
             disabled={loadingEarlier}
             onClick={() => void handleEarlier()}
           >
             {loadingEarlier ? 'Loading…' : 'Earlier messages'}
           </Button>
-        ) : null}
-        {!ready ? <p className="text-sm text-ink/70">Loading messages…</p> : null}
-        {ready && messages.length === 0 ? (
-          <Card className="flex flex-col gap-3">
-            <CardTitle>No messages yet</CardTitle>
-            <p className="text-sm text-ink/70">Say hello. Everyone in the club can see this room.</p>
-          </Card>
         ) : null}
         {messages.length > 0 ? (
           <ul className="flex flex-col gap-2" aria-live="polite">
@@ -201,18 +196,31 @@ function ChatRoom({
               <MessageRow key={message.id} message={message} mine={message.authorId === uid} />
             ))}
           </ul>
-        ) : null}
+        ) : (
+          <p className="m-auto max-w-sm text-center text-sm text-ink/70">
+            No messages yet. Say hello — everyone in the club can see this room.
+          </p>
+        )}
       </div>
-      <form onSubmit={(event) => void handleSend(event)} className="sticky bottom-0 flex gap-2 bg-cream pt-1">
+      <form
+        onSubmit={(event) => void handleSend(event)}
+        className="sticky bottom-0 z-10 mt-auto flex gap-2 bg-cream py-3"
+      >
         <TextInput
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           maxLength={CHAT_TEXT_MAX}
           placeholder="Message the club"
           aria-label="Message"
+          className="min-w-0 flex-1"
           disabled={busy}
         />
-        <Button type="submit" disabled={busy || draft.trim().length === 0}>
+        <Button
+          type="submit"
+          size="sm"
+          className="self-stretch"
+          disabled={busy || draft.trim().length === 0}
+        >
           Send
         </Button>
       </form>
@@ -251,46 +259,58 @@ function PushNotice({
   note: string | null
   iosInstall: boolean
   onEnable: () => void
-}) {
-  if (state === 'dev') return null
-  return (
-    <Card className="flex flex-col gap-3">
-      {state === 'granted' ? (
-        <p className="text-sm text-ink/70">Notifications are on for this phone.</p>
-      ) : null}
-      {state === 'unconfigured' ? (
-        <p className="text-sm text-ink/70">
-          Messages work now. Phone notifications still need a Firebase web push key on this site.
-        </p>
-      ) : null}
-      {state === 'unsupported' ? (
-        <>
-          <p className="text-sm text-ink/70">
-            {note ?? 'This browser could not turn notifications on.'}
-          </p>
-          <Button type="button" variant="ghost" onClick={onEnable}>
-            Try again
-          </Button>
-        </>
-      ) : null}
-      {state === 'denied' ? (
-        <p className="text-sm text-ink/70">
-          Notifications are blocked for this site. Turn them on in the phone settings, then come back.
-        </p>
-      ) : null}
-      {state === 'default' ? (
-        <>
-          <p className="text-sm text-ink/70">
-            Get a ping when someone sends a message, even if the club is closed.
-            {iosInstall
+}): ReactNode {
+  switch (state) {
+    case 'dev':
+      return null
+    case 'granted':
+      return <PushBanner message="Notifications are on for this phone." />
+    case 'unconfigured':
+      return (
+        <PushBanner message="Messages work now. Phone notifications still need a Firebase web push key on this site." />
+      )
+    case 'unsupported':
+      return (
+        <PushBanner
+          message={note ?? 'This browser could not turn notifications on.'}
+          action={
+            <Button type="button" variant="ghost" size="sm" onClick={onEnable}>
+              Try again
+            </Button>
+          }
+        />
+      )
+    case 'denied':
+      return (
+        <PushBanner message="Notifications are blocked for this site. Turn them on in the phone settings, then come back." />
+      )
+    case 'default':
+      return (
+        <PushBanner
+          message={`Get a ping when someone sends a message, even if the club is closed.${
+            iosInstall
               ? ' On an iPhone, add the site to your Home Screen and open it from that icon first.'
-              : ''}
-          </p>
-          <Button type="button" variant="ghost" onClick={onEnable}>
-            Enable notifications
-          </Button>
-        </>
-      ) : null}
-    </Card>
+              : ''
+          }`}
+          action={
+            <Button type="button" variant="ghost" size="sm" onClick={onEnable}>
+              Enable
+            </Button>
+          }
+        />
+      )
+    default: {
+      const unreachable: never = state
+      return unreachable
+    }
+  }
+}
+
+function PushBanner({ message, action }: { message: string; action?: ReactNode }) {
+  return (
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-rule bg-paper px-3 py-2">
+      <p className="text-sm text-ink/70">{message}</p>
+      {action}
+    </div>
   )
 }

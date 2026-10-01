@@ -1,6 +1,6 @@
-# Family Book Club
+# Book Club
 
-A small phone-friendly website for a family book club. Share a GitHub Pages link, join with a **name and a club code**,
+A small phone-friendly website for a book club. Share a GitHub Pages link, join with a **name and a club code**,
 keep a standing shortlist, and **present** when you meet so everyone sees the same current book and next-book options.
 
 It exists because the first fantasy pick was a hit, a later non-fiction pick was not, and a book some people had already
@@ -16,12 +16,12 @@ presenting once the owner has started it.
    popular titles. Members wait.
 
 2. **Between meetings**  
-   Current book (rate 1–5, optional personal note), genre votes for next time, and a **Shortlist (N)** page to search
+   Current book (rate 1–5, optional comment), genre votes for next time, and a **Shortlist (N)** page to search
    and add books. Genre is taken from Open Library subjects, not a dropdown. No app recs on this screen.
 
 3. **Present this meeting** (owner)  
    Recs are computed **once** from this cycle’s genre votes and past ratings, then frozen. The presenting view shows the
-   current book, personal notes (slow scroll, omitted if none), rules, genre lean, a looping shortlist strip (omitted if
+   current book, comments (omitted if none), rules, genre lean, a looping shortlist strip (omitted if
    empty), and up to two recs:
     - most popular in the lead genre
     - from past club ratings (hidden until something has been rated)
@@ -38,7 +38,7 @@ presenting once the owner has started it.
 - Sign in with Google, then create / join a club with a display name + code
 - Rules board (honor system)
 - Persistent club shortlist, including “I’ve already read this”
-- Personal notes on the current book, shown in presenting if anyone wrote one
+- Comments on the current book, shown in presenting if anyone wrote one
 - Meeting recs from Open Library (subjects, popularity, past ratings/tags)
 - Owner-only phase changes
 - One chat room per club. Each message shows the member’s club name and the time it was sent

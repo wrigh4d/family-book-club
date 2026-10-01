@@ -3,7 +3,7 @@ import { type BookSearchHit } from '../lib/openLibrary'
 import { useBookSearch } from '../lib/useBookSearch'
 import type { ClubState, Nomination } from '../types'
 import { BookHitRow, BookSearchForm } from './bookSearch'
-import { Button, Cover, ErrorBanner, TextButton } from './ui'
+import { Button, Chip, Cover, ErrorBanner, TextButton } from './ui'
 
 export function Nominate({
   state,
@@ -18,7 +18,6 @@ export function Nominate({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-semibold">Add a book</p>
       <BookSearchForm
         query={query}
         onQueryChange={setQuery}
@@ -37,15 +36,32 @@ export function Nominate({
               hit={hit}
               action={
                 blocked ? (
-                  <Button type="button" variant="ghost" disabled>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled
+                    className="w-full sm:w-auto"
+                  >
                     {blocked}
                   </Button>
                 ) : listed ? (
-                  <Button type="button" variant="ghost" onClick={() => onRemove(listed.id)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => onRemove(listed.id)}
+                  >
                     Remove
                   </Button>
                 ) : (
-                  <Button type="button" onClick={() => onAdd(hit)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => onAdd(hit)}
+                  >
                     Add
                   </Button>
                 )
@@ -80,16 +96,16 @@ export function Shortlist({
           <li key={book.id} className="flex gap-3 rounded-xl bg-cream p-2">
             <Cover src={book.coverUrl} title={book.title} className="h-20 w-14" />
             <div className="min-w-0 flex-1">
-              <p className="font-semibold">{book.title}</p>
+              <p className="font-semibold break-words">{book.title}</p>
               <p className="text-sm text-ink/70">{book.author}</p>
               <p className="text-xs text-ink/60">
                 {book.genre} · nominated by {book.nominatedByName}
                 {book.alreadyReadBy.length ? ` · ${book.alreadyReadBy.length} already read` : ''}
               </p>
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                <TextButton onClick={() => onFlag(book.id, already)}>
-                  {already ? 'I haven’t read this' : 'I’ve already read this'}
-                </TextButton>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Chip selected={already} onClick={() => onFlag(book.id, already)}>
+                  Already read
+                </Chip>
                 <TextButton onClick={() => onRemove(book.id)}>Remove</TextButton>
               </div>
             </div>

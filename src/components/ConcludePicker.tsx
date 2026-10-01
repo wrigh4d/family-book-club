@@ -6,7 +6,7 @@ import {
   type CurrentBook,
   recToCurrentBook,
 } from '../types'
-import { BookHitRow, BookSearchForm } from './bookSearch'
+import { BookHitRow, BookRow, BookSearchForm } from './bookSearch'
 import { Button, Cover, ErrorBanner, TextButton } from './ui'
 
 export function ConcludePicker({
@@ -55,19 +55,20 @@ export function ConcludePicker({
       ) : (
         <ul className="flex flex-col gap-2">
           {shortlist.map((book) => (
-            <li key={book.id} className="flex items-center gap-2 rounded-xl bg-cream p-2">
-              <Cover src={book.coverUrl} title={book.title} className="h-16 w-11" />
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">{book.title}</p>
-                <p className="text-sm text-ink/70">{book.author}</p>
-              </div>
-              <div className="flex shrink-0 flex-col gap-1">
-                <Button type="button" className="py-2" onClick={() => onPick(book)}>
-                  Choose
-                </Button>
-                <TextButton onClick={() => onRemove(book.id)}>Remove</TextButton>
-              </div>
-            </li>
+            <BookRow
+              key={book.id}
+              coverUrl={book.coverUrl}
+              title={book.title}
+              author={book.author}
+              action={
+                <div className="flex items-center justify-end gap-3">
+                  <TextButton onClick={() => onRemove(book.id)}>Remove</TextButton>
+                  <Button type="button" size="sm" onClick={() => onPick(book)}>
+                    Choose
+                  </Button>
+                </div>
+              }
+            />
           ))}
         </ul>
       )}
@@ -104,7 +105,13 @@ function ConcludeSearch({
               key={hit.olid}
               hit={hit}
               action={
-                <Button type="button" disabled={Boolean(blocked)} onClick={() => onPick(hit)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  disabled={Boolean(blocked)}
+                  onClick={() => onPick(hit)}
+                >
                   {blocked ?? 'Choose'}
                 </Button>
               }
@@ -139,24 +146,19 @@ function ConcludeRec({
       <div className="mt-2 flex gap-3">
         <Cover src={rec.coverUrl} title={rec.title} className="h-20 w-14" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-xl">{rec.title}</p>
+          <p className="font-display text-xl break-words">{rec.title}</p>
           <p className="text-sm text-ink/70">{rec.author}</p>
           <p className="mt-1 text-sm text-ink/70">{rec.why}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button type="button" className="py-2" disabled={Boolean(blocked)} onClick={onChoose}>
+            <Button type="button" size="sm" disabled={Boolean(blocked)} onClick={onChoose}>
               {blocked ?? 'Choose'}
             </Button>
             {blocked ? null : listedId ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="py-2"
-                onClick={() => onRemove(listedId)}
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(listedId)}>
                 Remove from shortlist
               </Button>
             ) : (
-              <Button type="button" variant="ghost" className="py-2" onClick={onAdd}>
+              <Button type="button" variant="ghost" size="sm" onClick={onAdd}>
                 Add to shortlist
               </Button>
             )}

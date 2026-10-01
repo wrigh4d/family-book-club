@@ -94,12 +94,14 @@ export function Landing() {
     })
   }
 
+  const board = Boolean(ready && uid && displayName)
+
   return (
-    <Page>
+    <Page width={board ? 'wide' : 'narrow'}>
       <header className="flex flex-col gap-2">
-        <Brand />
+        {ready && !uid ? <Brand /> : null}
         <h1 className="font-display text-4xl leading-tight">
-          Pick a book the whole family will actually read.
+          Pick a book the whole club will actually read.
         </h1>
         <p className="text-ink/80">
           Create a club, share a code, add rules and nominations, then present the next pick when
@@ -129,15 +131,15 @@ export function Landing() {
           </Card>
         </>
       ) : (
-        <>
-          <Card>
+        <div className="grid items-start gap-6 md:grid-cols-2">
+          <Card className="md:col-span-2">
             <h2 className="mb-3 font-display text-2xl">Your clubs</h2>
             {!clubsReady ? (
               <p className="text-sm text-ink/70">Loading your clubs…</p>
             ) : (
               <div className="flex flex-col gap-3">
                 <ClubList clubs={clubs} empty="Clubs you create or join will show up here." />
-                <Link className={buttonClass('secondary')} to="/clubs">
+                <Link className={`${buttonClass('secondary')} sm:self-start`} to="/clubs">
                   {clubs.length > 0 ? 'See all clubs' : 'Go to your clubs'}
                 </Link>
               </div>
@@ -172,7 +174,7 @@ export function Landing() {
               </Button>
             </form>
           </Card>
-        </>
+        </div>
       )}
     </Page>
   )

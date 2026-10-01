@@ -10,7 +10,7 @@ import {
 import { useBookFacts } from '../lib/useBookFacts'
 import { useBookSearch } from '../lib/useBookSearch'
 import type { ClubState, CurrentBook } from '../types'
-import { BookPickList, BookSearchForm } from './bookSearch'
+import { BookPickList, BookRow, BookSearchForm } from './bookSearch'
 import { Button, Card, CardTitle, Cover, ErrorBanner, Subhead, TextArea, TextButton } from './ui'
 
 export function CurrentBookCard({
@@ -65,16 +65,16 @@ export function CurrentBookCard({
   return (
     <Card className="flex flex-col gap-4">
       <CardTitle>Current book</CardTitle>
-      <div className="flex gap-3">
+      <div className="flex gap-4">
         <Cover
           src={current.coverUrl}
           title={current.title}
           loading="eager"
-          className="h-36 w-24 ring-1 ring-gold/40"
+          className="h-36 w-24 ring-1 ring-gold/40 sm:h-48 sm:w-32"
         />
-        <div>
-          <p className="font-display text-xl">{current.title}</p>
-          <p className="text-sm text-ink/70">{current.author}</p>
+        <div className="min-w-0">
+          <p className="font-display text-2xl leading-tight break-words">{current.title}</p>
+          <p className="mt-1 text-sm text-ink/70">{current.author}</p>
           {facts ? <p className="mt-1 text-sm text-ink/60">{facts}</p> : null}
         </div>
       </div>
@@ -88,46 +88,54 @@ export function CurrentBookCard({
       ) : (
         <>
           <div>
-            <Subhead>Your rating</Subhead>
-            <div className="flex gap-2" role="group" aria-label="Rate the current book">
-              {[1, 2, 3, 4, 5].map((stars) => (
-                <button
-                  key={stars}
-                  type="button"
-                  aria-label={`Rate ${stars} out of 5`}
-                  aria-pressed={myRating === stars}
-                  className={`h-11 w-11 rounded-full border transition duration-150 ${
-                    myRating === stars
-                      ? 'border-burgundy bg-burgundy text-cream hover:bg-burgundy-dark'
-                      : 'border-rule bg-cream hover:border-burgundy hover:bg-burgundy/10'
-                  }`}
-                  onClick={() => rateCurrentBook(code, state, uid, stars).catch(onError)}
-                >
-                  {stars}
-                </button>
-              ))}
+            <Subhead>Rating</Subhead>
+            <div className="flex gap-1.5" role="group" aria-label="Rate the current book">
+              {[1, 2, 3, 4, 5].map((stars) => {
+                const filled = myRating != null && stars <= myRating
+                return (
+                  <button
+                    key={stars}
+                    type="button"
+                    aria-label={`Rate ${stars} out of 5`}
+                    aria-pressed={myRating === stars}
+                    className={`grid h-11 w-11 place-items-center rounded-full border transition duration-150 ${
+                      filled
+                        ? 'border-gold/70 bg-gold/15 text-gold'
+                        : 'border-rule bg-cream text-ink/30 hover:border-gold hover:text-gold'
+                    }`}
+                    onClick={() => rateCurrentBook(code, state, uid, stars).catch(onError)}
+                  >
+                    <StarIcon filled={filled} />
+                  </button>
+                )
+              })}
             </div>
           </div>
           <div>
-            <Subhead>Your note</Subhead>
+            <Subhead>Comment</Subhead>
             <TextArea
               value={note}
               onChange={(event) => setDraft({ bookId: currentId, text: event.target.value })}
-              placeholder="A thought for the meeting — optional"
-              aria-label="Your note on the current book"
+              placeholder="Add your comment here..."
+              aria-label="Comment on the current book"
             />
-            <div className="mt-2 flex flex-wrap justify-end gap-2">
+            <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
               {owner ? (
-                <Button type="button" variant="ghost" onClick={() => setChangeForId(current.olid)}>
-                  Change current book
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setChangeForId(current.olid)}
+                >
+                  Change book
                 </Button>
               ) : null}
               <Button
                 type="button"
-                variant="ghost"
+                size="sm"
                 onClick={() => savePersonalNote(code, state, uid, note).catch(onError)}
               >
-                Save note
+                Add comment
               </Button>
             </div>
           </div>
@@ -162,16 +170,23 @@ function ChangeCurrentPicker({
           <Subhead>From the shortlist</Subhead>
           <ul className="flex flex-col gap-2">
             {shortlist.map((book) => (
-              <li key={book.id} className="flex items-center gap-2 rounded-xl bg-cream p-2">
-                <Cover src={book.coverUrl} title={book.title} className="h-16 w-11" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{book.title}</p>
-                  <p className="text-sm text-ink/70">{book.author}</p>
-                </div>
-                <Button type="button" className="py-2" disabled={busy} onClick={() => onPick(book)}>
-                  Choose
-                </Button>
-              </li>
+              <BookRow
+                key={book.id}
+                coverUrl={book.coverUrl}
+                title={book.title}
+                author={book.author}
+                action={
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    disabled={busy}
+                    onClick={() => onPick(book)}
+                  >
+                    Choose
+                  </Button>
+                }
+              />
             ))}
           </ul>
         </div>
@@ -200,5 +215,19 @@ function ChangeCurrentPicker({
         Keep this book
       </TextButton>
     </div>
+  )
+}
+
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5">
+      <path
+        fill={filled ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.25"
+        d="M10 2.4 12.2 7l5 .6-3.7 3.4.9 5L10 13.6 5.6 16l.9-5L2.8 7.6 7.8 7 10 2.4Z"
+      />
+    </svg>
   )
 }

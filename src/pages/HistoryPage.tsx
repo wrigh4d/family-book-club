@@ -29,7 +29,7 @@ export function HistoryPage() {
           </p>
         </Card>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul className="grid gap-4 lg:grid-cols-2">
           {past.map((book) => (
             <li key={book.id}>
               <HistoryBookCard
@@ -95,7 +95,7 @@ function HistoryBookCard({
       <div className="flex gap-3">
         <Cover src={book.coverUrl} title={book.title} className="h-28 w-[4.5rem]" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-xl">{book.title}</p>
+          <p className="font-display text-xl break-words">{book.title}</p>
           <p className="text-sm text-ink/70">{book.author}</p>
           <p className="mt-1 text-sm font-semibold text-burgundy">
             {groupRatingLabel(book.ratings)}
@@ -120,12 +120,12 @@ function HistoryBookCard({
         <TextArea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="A thought on this book — optional"
+          placeholder="Add your comment here..."
           aria-label={`Your comment on ${book.title}`}
         />
         <div className="mt-2 flex justify-end">
           <Button type="button" variant="ghost" disabled={busy} onClick={() => void handleSave()}>
-            Save comment
+            Add comment
           </Button>
         </div>
       </div>

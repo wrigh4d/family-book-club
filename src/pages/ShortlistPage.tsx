@@ -39,44 +39,49 @@ export function ShortlistPage() {
   return (
     <>
       <ErrorBanner message={error} />
-      <Nominate
-        state={state}
-        onAdd={async (hit) => {
-          try {
-            await addNomination(code, uid, displayName, hit, state)
-          } catch (err) {
-            setError(friendlyFirebaseError(err))
-          }
-        }}
-        onRemove={async (id) => {
-          try {
-            await removeFromShortlist(code, id)
-          } catch (err) {
-            setError(friendlyFirebaseError(err))
-          }
-        }}
-      />
-      <Card className="flex flex-col gap-4">
-        <CardTitle>Short list</CardTitle>
-        <Shortlist
-          books={listed}
-          uid={uid}
-          onFlag={async (id, already) => {
-            try {
-              await toggleAlreadyRead(code, id, uid, already)
-            } catch (err) {
-              setError(friendlyFirebaseError(err))
-            }
-          }}
-          onRemove={async (id) => {
-            try {
-              await removeFromShortlist(code, id)
-            } catch (err) {
-              setError(friendlyFirebaseError(err))
-            }
-          }}
-        />
-      </Card>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <Card className="flex flex-col gap-4">
+          <CardTitle>Add a book</CardTitle>
+          <Nominate
+            state={state}
+            onAdd={async (hit) => {
+              try {
+                await addNomination(code, uid, displayName, hit, state)
+              } catch (err) {
+                setError(friendlyFirebaseError(err))
+              }
+            }}
+            onRemove={async (id) => {
+              try {
+                await removeFromShortlist(code, id)
+              } catch (err) {
+                setError(friendlyFirebaseError(err))
+              }
+            }}
+          />
+        </Card>
+        <Card className="flex flex-col gap-4">
+          <CardTitle>Shortlist</CardTitle>
+          <Shortlist
+            books={listed}
+            uid={uid}
+            onFlag={async (id, already) => {
+              try {
+                await toggleAlreadyRead(code, id, uid, already)
+              } catch (err) {
+                setError(friendlyFirebaseError(err))
+              }
+            }}
+            onRemove={async (id) => {
+              try {
+                await removeFromShortlist(code, id)
+              } catch (err) {
+                setError(friendlyFirebaseError(err))
+              }
+            }}
+          />
+        </Card>
+      </div>
     </>
   )
 }

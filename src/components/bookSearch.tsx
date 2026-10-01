@@ -8,7 +8,7 @@ export function BookSearchForm({
   onQueryChange,
   searching,
   onSearch,
-  submitLabel = 'Search Open Library',
+  submitLabel = 'Search',
 }: {
   query: string
   onQueryChange: (value: string) => void
@@ -17,32 +17,59 @@ export function BookSearchForm({
   submitLabel?: string
 }) {
   return (
-    <form className="flex flex-col gap-2" onSubmit={onSearch}>
+    <form className="flex flex-col gap-2 sm:flex-row sm:items-center" onSubmit={onSearch}>
       <TextInput
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
         placeholder="Search title or author"
         aria-label="Search title or author"
+        className="min-w-0 sm:flex-1"
       />
-      <Button type="submit" variant="ghost" disabled={searching}>
+      <Button type="submit" variant="ghost" size="sm" disabled={searching} className="sm:shrink-0">
         {searching ? 'Searching…' : submitLabel}
       </Button>
     </form>
   )
 }
 
+export function BookRow({
+  coverUrl,
+  title,
+  author,
+  detail,
+  action,
+}: {
+  coverUrl: string | null
+  title: string
+  author: string
+  detail?: ReactNode
+  action?: ReactNode
+}) {
+  return (
+    <li className="flex flex-col gap-2 rounded-xl bg-cream p-2 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <Cover src={coverUrl} title={title} className="h-16 w-11" />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold break-words">{title}</p>
+          <p className="truncate text-sm text-ink/70">{author}</p>
+          {detail}
+        </div>
+      </div>
+      {action ? <div className="shrink-0 sm:max-w-[45%]">{action}</div> : null}
+    </li>
+  )
+}
+
 export function BookHitRow({ hit, action }: { hit: BookSearchHit; action?: ReactNode }) {
   const facts = formatBookFacts(hit)
   return (
-    <li className="flex items-center gap-3 rounded-xl bg-cream p-2">
-      <Cover src={hit.coverUrl} title={hit.title} className="h-16 w-11" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{hit.title}</p>
-        <p className="truncate text-sm text-ink/70">{hit.author}</p>
-        {facts ? <p className="truncate text-xs text-ink/60">{facts}</p> : null}
-      </div>
-      {action}
-    </li>
+    <BookRow
+      coverUrl={hit.coverUrl}
+      title={hit.title}
+      author={hit.author}
+      detail={facts ? <p className="truncate text-xs text-ink/60">{facts}</p> : null}
+      action={action}
+    />
   )
 }
 
@@ -70,7 +97,7 @@ export function BookPickList({
             >
               <Cover src={hit.coverUrl} title={hit.title} className="h-16 w-11" />
               <span className="min-w-0">
-                <span className="block font-semibold">{hit.title}</span>
+                <span className="block font-semibold break-words">{hit.title}</span>
                 <span className="block text-sm text-ink/70">{hit.author}</span>
                 {facts ? <span className="block text-xs text-ink/60">{facts}</span> : null}
                 {blocked ? <span className="block text-xs text-ink/50">{blocked}</span> : null}

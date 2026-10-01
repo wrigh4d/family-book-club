@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './lib/auth'
 import { useForegroundPush } from './lib/useForegroundPush'
 import { ChatPage } from './pages/ChatPage'
 import { ClubHome } from './pages/ClubHome'
-import { ClubLayout } from './pages/ClubLayout'
+import { ClubLayout, ClubShell } from './pages/ClubLayout'
 import { HistoryPage } from './pages/HistoryPage'
 import { Landing } from './pages/Landing'
 import { MyClubs } from './pages/MyClubs'
@@ -20,11 +20,13 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/clubs" element={<MyClubs />} />
       <Route path="/club/:code" element={<ClubLayout />}>
-        <Route index element={<ClubHome />} />
-        <Route path="shortlist" element={<ShortlistPage />} />
-        <Route path="history" element={<HistoryPage />} />
+        <Route element={<ClubShell />}>
+          <Route index element={<ClubHome />} />
+          <Route path="shortlist" element={<ShortlistPage />} />
+          <Route path="history" element={<HistoryPage />} />
+          <Route path="chat" element={<ChatPage />} />
+        </Route>
         <Route path="present" element={<Present />} />
-        <Route path="chat" element={<ChatPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

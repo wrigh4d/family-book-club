@@ -5,14 +5,19 @@ import type {
   ReactNode,
   TextareaHTMLAttributes,
 } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { useAuth } from '../lib/auth'
-import { useChatUnread } from '../lib/useChatUnread'
+import { Link } from 'react-router-dom'
 
-export function Page({ children }: { children: ReactNode }) {
+export function Page({
+  children,
+  width = 'narrow',
+}: {
+  children: ReactNode
+  width?: 'narrow' | 'wide'
+}) {
+  const max = width === 'wide' ? 'max-w-5xl' : 'max-w-xl'
   return (
     <div className="min-h-dvh bg-cream text-ink">
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-6 sm:py-10">
+      <div className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`}>
         {children}
       </div>
     </div>
@@ -20,18 +25,17 @@ export function Page({ children }: { children: ReactNode }) {
 }
 
 export function Brand() {
-  return <p className="font-display text-sm tracking-wide text-burgundy">Family Book Club</p>
+  return <p className="font-display text-sm tracking-wide text-burgundy">Book Club</p>
 }
 
 export function ClubHeader({ name, action }: { name: string; action?: ReactNode }) {
   return (
     <header className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <Brand />
-          <h1 className="font-display text-3xl">{name}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-3xl leading-tight md:text-4xl">{name}</h1>
         </div>
-        {action ? <div className="flex shrink-0 flex-col items-end gap-2">{action}</div> : null}
+        {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
       </div>
       <AccentRule />
     </header>
@@ -56,12 +60,7 @@ export function AccentRule({ className = '' }: { className?: string }) {
 }
 
 export function CardTitle({ children }: { children: ReactNode }) {
-  return (
-    <div>
-      <h2 className="font-display text-2xl">{children}</h2>
-      <AccentRule className="mt-2" />
-    </div>
-  )
+  return <h2 className="font-display text-xl leading-tight">{children}</h2>
 }
 
 export function Subhead({ children }: { children: ReactNode }) {
@@ -77,25 +76,22 @@ export function Accordion({ title, children }: { title: string; children: ReactN
   return (
     <Card>
       <details className="group">
-        <summary className="flex list-none flex-col outline-none select-none marker:content-none focus-visible:ring-2 focus-visible:ring-burgundy [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center justify-between gap-3 font-display text-2xl">
-            {title}
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 20 20"
-              fill="none"
-              className="h-5 w-5 shrink-0 text-gold transition-transform duration-150 group-open:rotate-180"
-            >
-              <path
-                d="M5 8l5 5 5-5"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <AccentRule className="mt-2" />
+        <summary className="flex list-none items-center justify-between gap-3 font-display text-xl outline-none select-none marker:content-none focus-visible:ring-2 focus-visible:ring-burgundy [&::-webkit-details-marker]:hidden">
+          {title}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="h-5 w-5 shrink-0 text-gold transition-transform duration-150 group-open:rotate-180"
+          >
+            <path
+              d="M5 8l5 5 5-5"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </summary>
         <div className="mt-4 flex flex-col gap-5">{children}</div>
       </details>
@@ -130,25 +126,34 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   )
 }
 
-export function buttonClass(variant: 'primary' | 'secondary' | 'ghost' = 'primary'): string {
+export function buttonClass(
+  variant: 'primary' | 'secondary' | 'ghost' = 'primary',
+  size: 'md' | 'sm' = 'md',
+): string {
+  const sizes = {
+    md: 'rounded-xl px-4 py-3',
+    sm: 'rounded-lg px-3 py-2 text-sm',
+  }[size]
   const styles = {
     primary: 'bg-burgundy text-cream hover:bg-burgundy-dark hover:shadow-md hover:-translate-y-px',
     secondary: 'bg-ink text-cream hover:bg-burgundy hover:shadow-md hover:-translate-y-px',
     ghost:
       'border border-burgundy bg-transparent text-burgundy hover:bg-burgundy hover:text-cream hover:shadow-md',
   }[variant]
-  return `inline-flex items-center justify-center rounded-xl px-4 py-3 text-center font-semibold transition duration-150 ease-out active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${styles}`
+  return `inline-flex items-center justify-center text-center font-semibold transition duration-150 ease-out active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${sizes} ${styles}`
 }
 
 export function Button({
   children,
   variant = 'primary',
+  size = 'md',
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'ghost'
+  size?: 'md' | 'sm'
 }) {
   return (
-    <button {...props} className={`${buttonClass(variant)} ${props.className ?? ''}`}>
+    <button {...props} className={`${buttonClass(variant, size)} ${props.className ?? ''}`}>
       {children}
     </button>
   )
@@ -270,82 +275,6 @@ export function GoogleSignInCard({
         Continue with Google
       </Button>
     </Card>
-  )
-}
-
-export function SessionBar({
-  name,
-  code,
-  onSignOut,
-  clubsHref = '/clubs',
-}: {
-  name: string
-  code: string
-  onSignOut: () => void
-  clubsHref?: string | null
-}) {
-  return (
-    <>
-      <p className="text-sm text-ink/70">
-        Signed in as <span className="font-semibold text-ink">{name}</span>
-        {clubsHref ? (
-          <>
-            {' · '}
-            <TextLink to={clubsHref}>My clubs</TextLink>
-          </>
-        ) : null}
-        {' · '}
-        <TextButton onClick={onSignOut}>Sign out</TextButton>
-      </p>
-      <ClubNav code={code} />
-    </>
-  )
-}
-
-function ClubNav({ code }: { code: string }) {
-  const { pathname } = useLocation()
-  const { uid } = useAuth()
-  const chatUnread = useChatUnread(code, uid, pathname)
-
-  const items = [
-    { id: 'club', to: `/club/${code}`, label: 'Club' },
-    { id: 'shortlist', to: `/club/${code}/shortlist`, label: 'Shortlist' },
-    { id: 'history', to: `/club/${code}/history`, label: 'Past books' },
-    { id: 'chat', to: `/club/${code}/chat`, label: 'Chat' },
-  ]
-
-  return (
-    <nav
-      aria-label="Club sections"
-      className="grid grid-cols-2 gap-1 rounded-2xl border border-rule bg-paper p-1 sm:grid-cols-4"
-    >
-      {items.map((item) => {
-        const active = pathname === item.to
-        const unread = item.id === 'chat' && chatUnread
-
-        return (
-          <Link
-            key={item.id}
-            to={item.to}
-            aria-current={active ? 'page' : undefined}
-            aria-label={unread ? 'Chat, new messages' : undefined}
-            className={`relative rounded-xl px-1.5 py-2.5 text-center text-sm font-semibold leading-tight transition ${
-              active
-                ? 'bg-burgundy text-cream shadow-sm'
-                : 'text-ink/70 hover:bg-cream hover:text-ink'
-            }`}
-          >
-            {item.label}
-            {unread ? (
-              <span
-                aria-hidden="true"
-                className={`absolute top-2 right-2 h-2 w-2 rounded-full ${active ? 'bg-cream' : 'bg-gold'}`}
-              />
-            ) : null}
-          </Link>
-        )
-      })}
-    </nav>
   )
 }
 

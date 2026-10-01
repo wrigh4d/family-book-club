@@ -1,5 +1,8 @@
-import { useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { AccountMenu, ClubSectionNav, ClubTabBar, type ClubSection } from '../components/clubNav'
+import { useAuth } from '../lib/auth'
+import { useChatUnread } from '../lib/useChatUnread'
 import {
   AccentRule,
   Brand,
@@ -10,7 +13,6 @@ import {
   GoogleSignInCard,
   NameForm,
   Page,
-  SessionBar,
   TextButton,
 } from '../components/ui'
 import { friendlyFirebaseError } from '../lib/errors'
@@ -40,7 +42,6 @@ function ClubGate() {
   } = useClub()
   const navigate = useNavigate()
   const [authBusy, setAuthBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
 
   if (!code) {
     return (
@@ -49,21 +50,6 @@ function ClubGate() {
         <Button onClick={() => navigate('/clubs')}>Back to My Clubs</Button>
       </Page>
     )
-  }
-
-  const invite = `${window.location.origin}${import.meta.env.BASE_URL}club/${code}`.replace(
-    /([^:]\/)\/+/g,
-    '$1',
-  )
-
-  async function copyInvite() {
-    try {
-      await navigator.clipboard.writeText(invite)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      setError('Could not copy the invite link.')
-    }
   }
 
   async function handleGoogle() {
@@ -111,10 +97,7 @@ function ClubGate() {
     return (
       <Page>
         <header className="flex flex-col gap-3">
-          <div>
-            <Brand />
-            <h1 className="font-display text-3xl">Join this club</h1>
-          </div>
+          <h1 className="font-display text-3xl">Join this club</h1>
           <AccentRule />
         </header>
         <ErrorBanner message={error} />
@@ -139,7 +122,6 @@ function ClubGate() {
   if (!state) {
     return (
       <Page>
-        <Brand />
         <p>Loading club…</p>
         <ErrorBanner message={error} />
         {error ? (
@@ -151,18 +133,72 @@ function ClubGate() {
     )
   }
 
+  return <Outlet />
+}
+
+const CLUB_SECTIONS: {
+  id: ClubSection['id']
+  label: string
+  tab: string
+  icon: ClubSection['icon']
+}[] = [
+  { id: 'club', label: 'Club', tab: 'Club', icon: 'book' },
+  { id: 'shortlist', label: 'Shortlist', tab: 'Shortlist', icon: 'bookmark' },
+  { id: 'history', label: 'Past books', tab: 'Past', icon: 'shelf' },
+  { id: 'chat', label: 'Chat', tab: 'Chat', icon: 'chat' },
+]
+
+function useClubSections(code: string): ClubSection[] {
+  const { pathname } = useLocation()
+  const { uid } = useAuth()
+  const chatUnread = useChatUnread(code, uid, pathname)
+  return CLUB_SECTIONS.map((item) => {
+    const to = item.id === 'club' ? `/club/${code}` : `/club/${code}/${item.id}`
+    return {
+      ...item,
+      to,
+      active: pathname === to,
+      unread: item.id === 'chat' && chatUnread,
+    }
+  })
+}
+
+export function ClubShell() {
+  const { code, displayName, state, signOut } = useClub()
+  const sections = useClubSections(code)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const mainRef = useRef<HTMLElement>(null)
+
+  useLayoutEffect(() => {
+    if (pathname === `/club/${code}/chat`) return
+    mainRef.current?.scrollTo({ top: 0 })
+  }, [pathname, code])
+
+  if (!displayName || !state) return null
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/')
+  }
+
   return (
-    <Page>
-      <ClubHeader
-        name={state.club.name}
-        action={
-          <Button type="button" variant="ghost" className="whitespace-nowrap" onClick={copyInvite}>
-            {copied ? 'Copied' : 'Copy link'}
-          </Button>
-        }
-      />
-      <SessionBar name={displayName} code={code} onSignOut={() => void handleSignOut()} />
-      <Outlet />
-    </Page>
+    <div className="flex h-dvh flex-col bg-cream text-ink">
+      <header className="relative z-20 shrink-0 bg-cream">
+        <div className="mx-auto w-full max-w-5xl px-4 pt-4 md:px-6 md:pt-6">
+          <ClubHeader
+            name={state.club.name}
+            action={<AccountMenu name={displayName} onSignOut={() => void handleSignOut()} />}
+          />
+          <ClubSectionNav items={sections} className="mt-4" />
+        </div>
+      </header>
+      <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col gap-6 px-4 py-4 md:px-6 md:py-6">
+          <Outlet />
+        </div>
+      </main>
+      <ClubTabBar items={sections} />
+    </div>
   )
 }

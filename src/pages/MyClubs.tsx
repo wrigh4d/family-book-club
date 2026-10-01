@@ -1,6 +1,6 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { ClubList } from '../components/ClubList'
-import { Brand, Button, Card, ErrorBanner, Page } from '../components/ui'
+import { Button, Card, ErrorBanner, Page } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useJoinedClubs } from '../lib/useJoinedClubs'
 
@@ -26,9 +26,8 @@ export function MyClubs() {
   }
 
   return (
-    <Page>
+    <Page width="wide">
       <header className="flex flex-col gap-2">
-        <Brand />
         <h1 className="font-display text-4xl leading-tight">Your clubs</h1>
         <p className="text-ink/80">Open a club you’ve created or joined.</p>
       </header>
@@ -43,7 +42,7 @@ export function MyClubs() {
           />
         )}
       </Card>
-      <Button type="button" variant="ghost" onClick={() => navigate('/')}>
+      <Button type="button" variant="ghost" className="sm:self-start" onClick={() => navigate('/')}>
         Create or join another club
       </Button>
     </Page>
