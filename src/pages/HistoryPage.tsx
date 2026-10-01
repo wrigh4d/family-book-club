@@ -4,24 +4,21 @@ import { groupRatingLabel, isSameClubBook } from '../lib/bookStatus'
 import { friendlyFirebaseError } from '../lib/errors'
 import { resolveCurrentBook, saveHistoryComment } from '../lib/store'
 import { useClub } from '../lib/useClub'
-import { useClubHistory } from '../lib/useClubHistory'
 import type { HistoryBook, Member } from '../types'
 
 export function HistoryPage() {
   const { code, uid, displayName, state, error, setError } = useClub()
-  const { books, ready, error: historyError } = useClubHistory(uid && displayName ? code : null)
 
   if (!uid || !displayName || !state) return null
 
+  // Full history rides on the club subscription (no second listener).
   const current = resolveCurrentBook(state)
-  const past = books.filter((book) => !current || !isSameClubBook(book, current))
+  const past = state.history.filter((book) => !current || !isSameClubBook(book, current))
 
   return (
     <>
-      <ErrorBanner message={historyError ?? error} />
-      {!ready ? (
-        <p className="text-sm text-ink/65">Loading past books…</p>
-      ) : past.length === 0 ? (
+      <ErrorBanner message={error} />
+      {past.length === 0 ? (
         <Card className="flex flex-col gap-3">
           <CardTitle>Nothing finished yet</CardTitle>
           <p className="text-sm text-ink/65">
