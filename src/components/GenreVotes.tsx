@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { genreLean } from '../lib/suggestion'
 import { type ClubState, type Genre, GENRES } from '../types'
 import { Card, CardTitle, Chip, Subhead } from './ui'
+
+function GenreTag({ children }: { children: string }) {
+  return (
+    <span className="inline-flex min-h-8 items-center rounded-full border border-burgundy/20 bg-paper px-3 py-1 text-sm text-ink">
+      {children}
+    </span>
+  )
+}
 
 export function GenreVotes({
   uid,
@@ -19,6 +28,7 @@ export function GenreVotes({
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const shown = edited ? mine : live
   const clubPicks = members.filter((member) => (votes[member.id] ?? []).length > 0)
+  const lean = useMemo(() => genreLean(votes), [votes])
   const onSaveRef = useRef(onSave)
   const timerRef = useRef<number | null>(null)
   const pendingRef = useRef<Genre[] | null>(null)
@@ -77,22 +87,42 @@ export function GenreVotes({
           </p>
         ) : null}
       </div>
+      {lean.length > 0 ? (
+        <div>
+          <Subhead>Lean</Subhead>
+          <div className="flex flex-wrap gap-2">
+            {lean.map(({ genre, count }) => (
+              <span
+                key={genre}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-gold/40 bg-cream/90 px-3 py-1 text-sm"
+              >
+                <span className="font-medium text-ink">{genre}</span>
+                <span className="tabular-nums text-burgundy">{count}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {clubPicks.length > 0 ? (
         <div>
-          <Subhead>Club picks</Subhead>
-          <ul className="flex flex-col gap-1.5 text-sm">
+          <Subhead>Who wants what</Subhead>
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {clubPicks.map((member) => {
               const genres = votes[member.id] ?? []
               return (
                 <li
                   key={member.id}
-                  className="rounded-xl border-l-2 border-gold bg-cream/90 px-3.5 py-2.5"
+                  className="rounded-xl border border-rule/90 bg-cream/70 px-3.5 py-3"
                 >
-                  <span className="font-semibold">
+                  <p className="mb-2 text-sm font-semibold text-ink">
                     {member.displayName}
                     {member.id === uid ? ' (you)' : ''}
-                  </span>
-                  <span className="text-ink/65"> · {genres.join(', ')}</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {genres.map((genre) => (
+                      <GenreTag key={genre}>{genre}</GenreTag>
+                    ))}
+                  </div>
                 </li>
               )
             })}
