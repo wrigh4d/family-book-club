@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
-import { formatCommentTime } from '../lib/comments'
+import { commentsEmptyMessage, formatCommentTime } from '../lib/comments'
 import { Button, TextArea } from './ui'
 
 export type CommentItem = {
@@ -15,26 +15,41 @@ function commentsLabel(count: number): string {
   return `Comments · ${count}`
 }
 
-/**
- * Card entry that opens a modal for club comments (newest first) + compose.
- * Keeps the book card uncluttered.
- */
-export function CommentSection({
-  comments,
-  onSave,
-  onError,
-  ariaLabel = 'Add a comment',
-  bookTitle,
-  actions,
-}: {
+type CommentSectionBase = {
   comments: CommentItem[]
-  onSave: (text: string) => Promise<void>
   onError?: (err: unknown) => void
   ariaLabel?: string
   bookTitle?: string
   /** Extra actions shown on the card next to the Comments button (e.g. Change book). */
   actions?: ReactNode
-}) {
+}
+
+export type CommentSectionProps =
+  | (CommentSectionBase & {
+      /** View comments and timestamps only; hide compose. */
+      readOnly: true
+      onSave?: undefined
+    })
+  | (CommentSectionBase & {
+      readOnly?: false
+      onSave: (text: string) => Promise<void>
+    })
+
+/**
+ * Card entry that opens a modal for club comments (newest first).
+ * Compose is available unless `readOnly` (History past books).
+ * Keeps the book card uncluttered.
+ */
+export function CommentSection(props: CommentSectionProps) {
+  const {
+    comments,
+    onError,
+    ariaLabel = 'Add a comment',
+    bookTitle,
+    actions,
+    readOnly = false,
+  } = props
+  const onSave = readOnly ? undefined : props.onSave
   const [open, setOpen] = useState(false)
 
   return (
@@ -48,6 +63,7 @@ export function CommentSection({
           comments={comments}
           bookTitle={bookTitle}
           ariaLabel={ariaLabel}
+          readOnly={readOnly}
           onClose={() => setOpen(false)}
           onSave={onSave}
           onError={onError}
@@ -61,6 +77,7 @@ function CommentsModal({
   comments,
   bookTitle,
   ariaLabel,
+  readOnly,
   onClose,
   onSave,
   onError,
@@ -68,8 +85,9 @@ function CommentsModal({
   comments: CommentItem[]
   bookTitle?: string
   ariaLabel: string
+  readOnly: boolean
   onClose: () => void
-  onSave: (text: string) => Promise<void>
+  onSave?: (text: string) => Promise<void>
   onError?: (err: unknown) => void
 }) {
   const titleId = useId()
@@ -79,7 +97,7 @@ function CommentsModal({
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const clearTimer = useRef<number | null>(null)
-  const canSubmit = draft.trim().length > 0 && !busy
+  const canSubmit = Boolean(onSave) && draft.trim().length > 0 && !busy
 
   useEffect(() => {
     const previous = document.body.style.overflow
@@ -98,7 +116,7 @@ function CommentsModal({
 
   async function handleSave() {
     const text = draft.trim()
-    if (!text || busy) return
+    if (!onSave || !text || busy) return
     setBusy(true)
     setStatus('saving')
     try {
@@ -150,7 +168,9 @@ function CommentsModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
           {comments.length === 0 ? (
-            <p className="py-6 text-center text-sm text-ink/55">No comments yet. Be the first.</p>
+            <p className="py-6 text-center text-sm text-ink/55">
+              {commentsEmptyMessage(readOnly)}
+            </p>
           ) : (
             <ul id={listId} className="flex flex-col gap-2.5">
               {comments.map((row) => {
@@ -181,30 +201,32 @@ function CommentsModal({
           )}
         </div>
 
-        <footer className="shrink-0 border-t border-rule/70 px-4 py-3 sm:px-5">
-          <TextArea
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              if (status === 'saved') setStatus('idle')
-            }}
-            placeholder="Write a comment"
-            aria-label={ariaLabel}
-            className="min-h-24"
-          />
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
-            {status !== 'idle' ? (
-              <p role="status" aria-live="polite" className="mr-auto text-xs text-ink/60">
-                {status === 'saving' ? 'Saving…' : 'Saved.'}
-              </p>
-            ) : (
-              <span className="mr-auto" />
-            )}
-            <Button type="button" size="sm" disabled={!canSubmit} onClick={() => void handleSave()}>
-              Add comment
-            </Button>
-          </div>
-        </footer>
+        {readOnly ? null : (
+          <footer className="shrink-0 border-t border-rule/70 px-4 py-3 sm:px-5">
+            <TextArea
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value)
+                if (status === 'saved') setStatus('idle')
+              }}
+              placeholder="Write a comment"
+              aria-label={ariaLabel}
+              className="min-h-24"
+            />
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
+              {status !== 'idle' ? (
+                <p role="status" aria-live="polite" className="mr-auto text-xs text-ink/60">
+                  {status === 'saving' ? 'Saving…' : 'Saved.'}
+                </p>
+              ) : (
+                <span className="mr-auto" />
+              )}
+              <Button type="button" size="sm" disabled={!canSubmit} onClick={() => void handleSave()}>
+                Add comment
+              </Button>
+            </div>
+          </footer>
+        )}
       </div>
     </div>
   )
