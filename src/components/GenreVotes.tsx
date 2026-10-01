@@ -61,7 +61,7 @@ export function GenreVotes({
 
   return (
     <Card className="flex flex-col gap-4">
-      <CardTitle>Favorite genres</CardTitle>
+      <CardTitle>Genres</CardTitle>
       <div>
         <div className="flex flex-wrap gap-2">
           {GENRES.map((genre) => (
@@ -79,20 +79,20 @@ export function GenreVotes({
       </div>
       {clubPicks.length > 0 ? (
         <div>
-          <Subhead>What the club wants</Subhead>
+          <Subhead>Club picks</Subhead>
           <ul className="flex flex-col gap-1.5 text-sm">
             {clubPicks.map((member) => {
               const genres = votes[member.id] ?? []
               return (
                 <li
                   key={member.id}
-                  className="rounded-xl border-l-2 border-gold bg-cream px-3 py-2"
+                  className="rounded-xl border-l-2 border-gold bg-cream/90 px-3.5 py-2.5"
                 >
                   <span className="font-semibold">
                     {member.displayName}
                     {member.id === uid ? ' (you)' : ''}
                   </span>
-                  <span className="text-ink/70"> — {genres.join(', ')}</span>
+                  <span className="text-ink/65"> · {genres.join(', ')}</span>
                 </li>
               )
             })}
