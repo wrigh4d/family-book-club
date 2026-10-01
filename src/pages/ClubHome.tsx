@@ -89,9 +89,7 @@ export function ClubHome() {
     ) : (
       <Card className="flex flex-col gap-3">
         <CardTitle>Waiting on the first book</CardTitle>
-        <p className="text-sm text-ink/70">
-          The owner is choosing the starting book. This page will open once that’s set.
-        </p>
+        <p className="text-sm text-ink/65">The owner is picking the starting book.</p>
       </Card>
     )
   } else if (status === 'collecting') {
@@ -109,7 +107,7 @@ export function ClubHome() {
                 .catch(onError)
             }
           >
-            Present this meeting
+            Present meeting
           </Button>
         ) : null}
       </>
@@ -153,7 +151,7 @@ function ClubInformation({
   const [copied, setCopied] = useState(false)
   const copiedTimer = useRef<number | null>(null)
   const invite = `${window.location.origin}${import.meta.env.BASE_URL}club/${code}`.replace(
-    /([^:]\/)\/+/g,
+    /([^:]\/)\/+ /g,
     '$1',
   )
 
@@ -180,7 +178,7 @@ function ClubInformation({
   return (
     <Card className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <CardTitle>Club information</CardTitle>
+        <CardTitle>Club</CardTitle>
         <Button
           type="button"
           variant="ghost"
@@ -188,12 +186,12 @@ function ClubInformation({
           className="shrink-0"
           onClick={() => void copyInvite()}
         >
-          {copied ? 'Copied' : 'Copy invite link'}
+          {copied ? 'Copied' : 'Copy invite'}
         </Button>
       </div>
       <details className="group">
         <summary className="flex list-none items-center justify-between gap-3 text-sm font-semibold outline-none select-none marker:content-none focus-visible:ring-2 focus-visible:ring-burgundy [&::-webkit-details-marker]:hidden">
-          Members and rules
+          Members & rules
           <svg
             aria-hidden="true"
             viewBox="0 0 20 20"
@@ -226,8 +224,8 @@ function Members({ members }: { members: ClubState['members'] }) {
         {members.map((member) => (
           <li
             key={member.id}
-            className={`rounded-full bg-cream px-3 py-1 text-sm ${
-              member.role === 'owner' ? 'ring-1 ring-gold/70' : ''
+            className={`rounded-full border border-rule/80 bg-cream/90 px-3 py-1.5 text-sm ${
+              member.role === 'owner' ? 'border-gold/50 ring-1 ring-gold/40' : ''
             }`}
           >
             {member.displayName}
@@ -256,16 +254,13 @@ function RulesBoard({
 
   return (
     <div>
-      <h3 className="mb-1 font-display text-xl">Club rules</h3>
-      <p className="mb-3 text-sm text-ink/70">
-        These are the group’s culture, not something the app can verify.
-      </p>
+      <h3 className="mb-3 font-display text-xl">Rules</h3>
       <ul className="mb-4 flex flex-col gap-2">
         {rules.length === 0 ? (
-          <li className="text-sm text-ink/60">No rules yet. Add the ones that matter to you.</li>
+          <li className="text-sm text-ink/55">No rules yet.</li>
         ) : (
           rules.map((rule) => (
-            <li key={rule.id} className="rounded-xl border-l-2 border-gold bg-cream px-3 py-2">
+            <li key={rule.id} className="rounded-xl border-l-2 border-gold bg-cream/90 px-3.5 py-2.5">
               <p>{rule.text}</p>
               <p className="text-xs text-ink/60">{rule.createdByName}</p>
             </li>
@@ -276,7 +271,7 @@ function RulesBoard({
         <Field label="Add a rule">
           <TextInput
             name="rule"
-            placeholder="Don’t pick a book someone else already read"
+            placeholder="One book per person each round"
             required
             maxLength={500}
           />
@@ -309,26 +304,23 @@ function RoundStatus({
   const round = state.round
   const recs = meetingRecsFromRound(state)
 
-  if (!round) return <Card>Starting the first round…</Card>
+  if (!round) return <Card><p className="text-sm text-ink/65">Starting the first round…</p></Card>
 
   switch (round.status) {
     case 'presenting':
       return (
         <Card className="flex flex-col gap-4">
           <CardTitle>Meeting in progress</CardTitle>
-          <p className="text-sm text-ink/70">
-            Recs are frozen for this meeting. Open presenting so everyone sees the same book and
-            options.
-          </p>
+          <p className="text-sm text-ink/65">Recs are frozen. Open presenting to follow along.</p>
           <Link className={buttonClass()} to={`/club/${code}/present`}>
-            View presenting
+            Open presenting
           </Link>
         </Card>
       )
     case 'concluding':
       return (
-        <Card className="flex flex-col gap-5">
-          <CardTitle>Picking the next book</CardTitle>
+        <Card className="flex flex-col gap-4">
+          <CardTitle>Next book</CardTitle>
           {owner ? (
             <ConcludePicker
               state={state}
@@ -340,7 +332,7 @@ function RoundStatus({
               onRemove={(id) => removeFromShortlist(code, id).catch(onError)}
             />
           ) : (
-            <p className="text-sm text-ink/70">The owner is choosing the next book.</p>
+            <p className="text-sm text-ink/65">The owner is choosing.</p>
           )}
         </Card>
       )
