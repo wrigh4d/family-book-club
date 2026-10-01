@@ -83,3 +83,39 @@ export function useStageLayout(): boolean {
   }, [])
   return stage
 }
+
+export type MeetingProgress = {
+  rated: number
+  members: number
+  label: string
+  fraction: number
+  complete: boolean
+}
+
+/** Pick a featured club comment for Present: longest substantive note, newest on ties. */
+export function featuredQuote(comments: CommentLine[]): CommentLine | null {
+  if (comments.length === 0) return null
+  const substantive = comments.filter((row) => row.text.trim().length >= 40)
+  const pool = substantive.length > 0 ? substantive : comments
+  return pool.reduce((best, row) => {
+    const bestLen = best.text.trim().length
+    const rowLen = row.text.trim().length
+    if (rowLen > bestLen) return row
+    if (rowLen === bestLen && row.at > best.at) return row
+    return best
+  })
+}
+
+export function meetingProgress(rated: number, members: number): MeetingProgress {
+  const safeMembers = Math.max(0, members)
+  const safeRated = Math.max(0, Math.min(rated, safeMembers))
+  const complete = safeMembers > 0 && safeRated === safeMembers
+  const fraction = safeMembers === 0 ? 0 : safeRated / safeMembers
+  const label =
+    safeMembers === 0
+      ? 'No readers yet'
+      : complete
+        ? 'All rated'
+        : `Rated ${safeRated} of ${safeMembers}`
+  return { rated: safeRated, members: safeMembers, label, fraction, complete }
+}

@@ -1,0 +1,104 @@
+@keyframes meeting-orb-drift-a {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+        opacity: 0.45;
+    }
+    50% {
+        transform: translate3d(6%, 4%, 0) scale(1.08);
+        opacity: 0.7;
+    }
+}
+
+@keyframes meeting-orb-drift-b {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+        opacity: 0.35;
+    }
+    50% {
+        transform: translate3d(-5%, -6%, 0) scale(1.12);
+        opacity: 0.6;
+    }
+}
+
+@keyframes meeting-orb-drift-c {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+        opacity: 0.28;
+    }
+    50% {
+        transform: translate3d(4%, -5%, 0) scale(1.05);
+        opacity: 0.5;
+    }
+}
+
+@keyframes meeting-quote-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.35rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.meeting-backdrop {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.meeting-orb {
+    position: absolute;
+    display: block;
+    border-radius: 9999px;
+    filter: blur(48px);
+    will-change: transform, opacity;
+}
+
+.meeting-orb-a {
+    top: -8%;
+    left: -6%;
+    width: min(42vw, 28rem);
+    height: min(42vw, 28rem);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-gold) 55%, transparent) 0%, transparent 70%);
+    animation: meeting-orb-drift-a 18s ease-in-out infinite;
+}
+
+.meeting-orb-b {
+    top: 28%;
+    right: -10%;
+    width: min(48vw, 32rem);
+    height: min(48vw, 32rem);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-burgundy) 70%, transparent) 0%, transparent 72%);
+    animation: meeting-orb-drift-b 22s ease-in-out infinite;
+}
+
+.meeting-orb-c {
+    bottom: -12%;
+    left: 22%;
+    width: min(36vw, 24rem);
+    height: min(36vw, 24rem);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-gold) 35%, transparent) 0%, transparent 68%);
+    animation: meeting-orb-drift-c 26s ease-in-out infinite;
+}
+
+.meeting-quote {
+    animation: meeting-quote-in 480ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .meeting-orb {
+        animation: none;
+        opacity: 0.4;
+    }
+
+    .meeting-quote {
+        animation: none;
+    }
+}
