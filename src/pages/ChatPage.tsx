@@ -228,7 +228,7 @@ function ChatRoom({
           </p>
         )}
       </div>
-      <div className="sticky bottom-0 z-10 mt-auto shrink-0 bg-cream">
+      <div className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-rule/70 bg-cream/95 backdrop-blur-sm">
         <ErrorBanner message={sendError} />
         <form onSubmit={(event) => void handleSend(event)} className="flex gap-2 py-3">
           <TextInput
