@@ -26,6 +26,7 @@ import { computeMeetingRecs } from './recs'
 import { scoreNominations } from './suggestion'
 import { stateWithHistory } from './storeLive'
 import { appendBookComment, migrateBookComments } from './comments'
+import { historySetWithNotesClear } from './historyWrite'
 import {
   assertOwner,
   currentHistoryId,
@@ -268,14 +269,17 @@ async function upsertCurrentHistory(
     ratings[uid] = stars
     const existingSubjects = Array.isArray(row.subjects) ? row.subjects.map(String) : []
     const comments = migrateBookComments(row)
-    tx.set(historyRef, {
-      ...base,
-      finishedAt: row.finishedAt ?? Date.now(),
-      ratings,
-      comments,
-      notes: deleteField(),
-      subjects: existingSubjects.length > 0 ? existingSubjects : subjects,
-    })
+    const { data, options } = historySetWithNotesClear(
+      {
+        ...base,
+        finishedAt: row.finishedAt ?? Date.now(),
+        ratings,
+        comments,
+        subjects: existingSubjects.length > 0 ? existingSubjects : subjects,
+      },
+      deleteField(),
+    )
+    tx.set(historyRef, data, options)
   })
 }
 
@@ -294,18 +298,16 @@ async function appendCommentToHistory(
       name: input.name,
       text,
     })
-    const payload: Record<string, unknown> = {
-      comments,
-      notes: deleteField(),
-    }
+    const basePayload: Record<string, unknown> = { comments }
     if (!snap.exists()) {
       if (!createBase) throw new Error('No current book.')
-      Object.assign(payload, createBase, {
+      Object.assign(basePayload, createBase, {
         finishedAt: Date.now(),
         ratings: {},
       })
     }
-    tx.set(historyRef, payload, { merge: true })
+    const { data, options } = historySetWithNotesClear(basePayload, deleteField())
+    tx.set(historyRef, data, options)
   })
 }
 

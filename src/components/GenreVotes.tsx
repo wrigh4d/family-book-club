@@ -78,7 +78,7 @@ export function GenreVotes({
       </div>
       {lean.length > 0 ? (
         <div className="flex flex-col gap-1.5">
-          <Subhead>Lean</Subhead>
+          <Subhead>Club genre preferences</Subhead>
           <div className="flex flex-wrap gap-1.5">
             {lean.map(({ genre, count }) => (
               <span
