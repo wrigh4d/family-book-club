@@ -53,49 +53,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    let unsub: (() => void) | undefined
 
-    async function start() {
-      // Clear any leftover redirect flow from older versions of this site.
-      // Do not start new redirect sign-ins; Safari/iOS often lose sessionStorage.
-      try {
-        await getRedirectResult(auth)
-      } catch (err) {
-        if (!cancelled && !isCancelledSignIn(firebaseErrorCode(err))) {
-          setError(friendlyFirebaseError(err))
-        }
+    // Clear leftover redirect flows without blocking the auth listener.
+    // Do not start new redirect sign-ins; Safari/iOS often lose sessionStorage.
+    void getRedirectResult(auth).catch((err) => {
+      if (!cancelled && !isCancelledSignIn(firebaseErrorCode(err))) {
+        setError(friendlyFirebaseError(err))
       }
-      if (cancelled) return
-      unsub = onAuthStateChanged(auth, async (user) => {
-        try {
-          if (user?.isAnonymous) {
-            await firebaseSignOut(auth)
-            return
-          }
-          if (!user) {
-            setUid(null)
-            setName(null)
-            setSuggestedName(null)
-            setReady(true)
-            return
-          }
-          setUid(user.uid)
-          setSuggestedName(suggestedNameFromUser(user))
-          const saved = await loadProfile(user.uid)
-          setName(saved)
-          setError(null)
-          setReady(true)
-        } catch (err) {
-          setError(friendlyFirebaseError(err))
-          setReady(true)
-        }
-      })
-    }
+    })
 
-    void start()
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (user?.isAnonymous) {
+          await firebaseSignOut(auth)
+          return
+        }
+        if (!user) {
+          setUid(null)
+          setName(null)
+          setSuggestedName(null)
+          setReady(true)
+          return
+        }
+        setUid(user.uid)
+        setSuggestedName(suggestedNameFromUser(user))
+        const saved = await loadProfile(user.uid)
+        if (cancelled) return
+        setName(saved)
+        setError(null)
+        setReady(true)
+      } catch (err) {
+        if (cancelled) return
+        setError(friendlyFirebaseError(err))
+        setReady(true)
+      }
+    })
+
     return () => {
       cancelled = true
-      unsub?.()
+      unsub()
     }
   }, [])
 
