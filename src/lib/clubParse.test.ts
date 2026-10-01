@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { asGenre, isGenre } from '../types'
 import {
   asClub,
+  asHistory,
   asRound,
   asRoundStatus,
   parseAppRec,
@@ -151,5 +152,28 @@ describe('asRound', () => {
     })
     expect(round.genreRecommendation?.title).toBe('Legacy')
     expect(round.ratingsRecommendation?.title).toBe('Rated')
+  })
+})
+
+describe('asHistory', () => {
+  it('migrates legacy notes into comments', () => {
+    const book = asHistory('h1', {
+      title: 'Dune',
+      author: 'Herbert',
+      notes: { u1: 'Epic' },
+      ratings: { u1: 5 },
+    })
+    expect(book.comments).toEqual([
+      { id: 'legacy-u1', uid: 'u1', name: 'Reader', text: 'Epic', at: 0 },
+    ])
+    expect(book.ratings).toEqual({ u1: 5 })
+  })
+
+  it('reads flat comments arrays', () => {
+    const book = asHistory('h1', {
+      title: 'Dune',
+      comments: [{ id: 'c1', uid: 'u1', name: 'Nick', text: 'Wow', at: 9 }],
+    })
+    expect(book.comments?.[0]?.text).toBe('Wow')
   })
 })
