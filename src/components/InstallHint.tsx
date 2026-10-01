@@ -53,14 +53,14 @@ export function InstallHint() {
   }
 
   const message = ios
-    ? 'Install for a full-screen app: Share → Add to Home Screen.'
+    ? 'Share, then Add to Home Screen.'
     : deferred
-      ? 'Install Book Club on this device for quicker access and a full-screen feel.'
-      : 'Add Book Club to your home screen for a full-screen app experience.'
+      ? 'Install for quicker access and a full-screen feel.'
+      : 'Add to your home screen for a full-screen feel.'
 
   return (
     <aside
-      className="flex items-start gap-3 rounded-xl border border-gold/40 bg-paper px-3 py-3 shadow-sm"
+      className="flex items-start gap-3 rounded-xl border border-gold/35 bg-paper px-3.5 py-3 shadow-[var(--shadow-card)]"
       aria-label="Install app"
     >
       <div className="min-w-0 flex-1">

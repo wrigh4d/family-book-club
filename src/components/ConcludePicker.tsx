@@ -27,7 +27,7 @@ export function ConcludePicker({
     <div className="flex flex-col gap-4">
       {recs.genre ? (
         <ConcludeRec
-          label="Most popular in this round’s genre"
+          label="Genre favorite"
           rec={recs.genre}
           blocked={clubBookStatusLabel(clubBookStatus(state, recs.genre))}
           listedId={shortlist.find((book) => book.olid === recs.genre?.olid)?.id}
@@ -38,7 +38,7 @@ export function ConcludePicker({
       ) : null}
       {recs.ratings ? (
         <ConcludeRec
-          label="From past club ratings"
+          label="From past ratings"
           rec={recs.ratings}
           blocked={clubBookStatusLabel(clubBookStatus(state, recs.ratings))}
           listedId={shortlist.find((book) => book.olid === recs.ratings?.olid)?.id}
@@ -47,11 +47,9 @@ export function ConcludePicker({
           onRemove={onRemove}
         />
       ) : null}
-      <p className="font-semibold">Pick the next book from the shortlist</p>
+      <p className="text-sm font-semibold text-ink/85">Shortlist</p>
       {shortlist.length === 0 ? (
-        <p className="text-sm text-ink/70">
-          Shortlist is empty. Add a rec, search below, or go back and nominate.
-        </p>
+        <p className="text-sm text-ink/65">Shortlist is empty. Search below or nominate first.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {shortlist.map((book) => (
@@ -88,7 +86,7 @@ function ConcludeSearch({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-semibold">Or search Open Library</p>
+      <p className="text-sm font-semibold text-ink/85">Search</p>
       <BookSearchForm
         query={query}
         onQueryChange={setQuery}
@@ -141,8 +139,8 @@ function ConcludeRec({
   onRemove: (id: string) => void
 }) {
   return (
-    <div className="rounded-xl border border-gold/40 bg-cream p-3">
-      <p className="text-xs uppercase tracking-wide text-gold">{label}</p>
+    <div className="rounded-xl border border-gold/35 bg-cream/90 p-3.5 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold">{label}</p>
       <div className="mt-2 flex gap-3">
         <Cover src={rec.coverUrl} title={rec.title} className="h-20 w-14" />
         <div className="min-w-0 flex-1">
@@ -155,11 +153,11 @@ function ConcludeRec({
             </Button>
             {blocked ? null : listedId ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(listedId)}>
-                Remove from shortlist
+                Remove
               </Button>
             ) : (
               <Button type="button" variant="ghost" size="sm" onClick={onAdd}>
-                Add to shortlist
+                Add to list
               </Button>
             )}
           </div>

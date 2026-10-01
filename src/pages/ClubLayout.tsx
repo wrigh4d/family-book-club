@@ -184,8 +184,8 @@ export function ClubShell() {
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-cream text-ink pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <header className="relative z-20 shrink-0 bg-cream pt-[env(safe-area-inset-top)]">
+    <div className="flex h-dvh flex-col bg-transparent text-ink pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <header className="relative z-20 shrink-0 bg-cream/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto w-full max-w-5xl px-4 pt-4 md:px-6 md:pt-6">
           <ClubHeader
             name={state.club.name}

@@ -86,14 +86,14 @@ export function Shortlist({
   onRemove: (id: string) => Promise<void>
 }) {
   if (!books.length) {
-    return <p className="text-sm text-ink/70">No books yet. Search above to add one.</p>
+    return <p className="text-sm text-ink/65">No books yet. Search to add one.</p>
   }
   return (
     <ul className="flex flex-col gap-3">
       {books.map((book) => {
         const already = book.alreadyReadBy.includes(uid)
         return (
-          <li key={book.id} className="flex gap-3 rounded-xl bg-cream p-2">
+          <li key={book.id} className="flex gap-3 rounded-xl border border-rule/60 bg-cream/90 p-2.5">
             <Cover src={book.coverUrl} title={book.title} className="h-20 w-14" />
             <div className="min-w-0 flex-1">
               <p className="font-semibold break-words">{book.title}</p>

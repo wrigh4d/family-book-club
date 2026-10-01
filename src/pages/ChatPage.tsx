@@ -224,11 +224,11 @@ function ChatRoom({
           </ul>
         ) : (
           <p className="pointer-events-none m-auto max-w-sm text-center text-sm text-ink/70">
-            No messages yet. Say hello — everyone in the club can see this room.
+            No messages yet. Say hello to the club.
           </p>
         )}
       </div>
-      <div className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-rule/70 bg-cream/95 backdrop-blur-sm">
+      <div className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-rule/60 bg-cream/90 backdrop-blur-md">
         <ErrorBanner message={sendError} />
         <form onSubmit={(event) => void handleSend(event)} className="flex gap-2 py-3">
           <TextInput
@@ -276,7 +276,7 @@ function MessageRow({ message, mine }: { message: ChatMessage; mine: boolean }) 
     <li className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`max-w-[85%] rounded-2xl px-3 py-2 ${
-          mine ? 'bg-burgundy text-cream' : 'border border-rule bg-paper text-ink'
+          mine ? 'bg-burgundy text-cream shadow-sm' : 'border border-rule/90 bg-paper text-ink shadow-sm'
         }`}
       >
         <p className={`text-xs font-semibold ${mine ? 'text-cream/80' : 'text-ink/60'}`}>
@@ -307,15 +307,15 @@ function PushNotice({
     case 'dev':
       return null
     case 'granted':
-      return <PushBanner message="Notifications are on for this phone." />
+      return <PushBanner message="Notifications are on." />
     case 'unconfigured':
       return (
-        <PushBanner message="Phone notifications still need a Firebase web push key on this site." />
+        <PushBanner message="Push needs a Firebase web key on this site." />
       )
     case 'unsupported':
       return (
         <PushBanner
-          message={note ?? 'This browser could not turn notifications on.'}
+          message={note ?? 'Could not enable notifications.'}
           action={
             <Button type="button" variant="ghost" size="sm" onClick={onEnable}>
               Try again
@@ -325,14 +325,14 @@ function PushNotice({
       )
     case 'denied':
       return (
-        <PushBanner message="Notifications are blocked for this site. Turn them on in the phone settings, then come back." />
+        <PushBanner message="Notifications are blocked. Enable them in settings, then return." />
       )
     case 'default':
       return (
         <PushBanner
-          message={`Get a ping when someone sends a message, even if the club is closed.${
+          message={`Get a ping for new messages.${
             iosInstall
-              ? ' On an iPhone, add the site to your Home Screen and open it from that icon first.'
+              ? ' On iPhone, add to Home Screen and open from that icon first.'
               : ''
           }`}
           action={
@@ -351,7 +351,7 @@ function PushNotice({
 
 function PushBanner({ message, action }: { message: string; action?: ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-rule bg-paper px-3 py-2">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-rule/80 bg-paper px-3.5 py-2.5 shadow-sm">
       <p className="text-sm text-ink/70">{message}</p>
       {action}
     </div>

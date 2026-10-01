@@ -45,7 +45,7 @@ export function CurrentBookCard({
     return (
       <Card className="flex flex-col gap-4">
         <CardTitle>Current book</CardTitle>
-        <p className="text-sm text-ink/70">None yet. The owner will pick one after presenting.</p>
+        <p className="text-sm text-ink/65">None yet. The owner will pick one next.</p>
       </Card>
     )
   }
@@ -70,7 +70,7 @@ export function CurrentBookCard({
           src={current.coverUrl}
           title={current.title}
           loading="eager"
-          className="h-36 w-24 ring-1 ring-gold/40 sm:h-48 sm:w-32"
+          className="h-36 w-24 shadow-md ring-1 ring-gold/35 sm:h-48 sm:w-32"
         />
         <div className="min-w-0">
           <p className="font-display text-2xl leading-tight break-words">{current.title}</p>
@@ -161,9 +161,8 @@ function ChangeCurrentPicker({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-ink/70">
-        This book was never finished. Replacing it deletes ratings, notes, and every other record of
-        it.
+      <p className="text-sm text-ink/65">
+        Replacing this unfinished book clears its ratings and notes.
       </p>
       {shortlist.length > 0 ? (
         <div>

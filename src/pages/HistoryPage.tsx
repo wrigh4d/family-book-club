@@ -20,12 +20,12 @@ export function HistoryPage() {
     <>
       <ErrorBanner message={historyError ?? error} />
       {!ready ? (
-        <p className="text-sm text-ink/70">Loading past books…</p>
+        <p className="text-sm text-ink/65">Loading past books…</p>
       ) : past.length === 0 ? (
         <Card className="flex flex-col gap-3">
           <CardTitle>Nothing finished yet</CardTitle>
-          <p className="text-sm text-ink/70">
-            After you conclude a meeting, that book will show up here with ratings and comments.
+          <p className="text-sm text-ink/65">
+            Finished books land here with ratings and comments.
           </p>
         </Card>
       ) : (
@@ -106,11 +106,11 @@ function HistoryBookCard({
       <div>
         <Subhead>Comments</Subhead>
         {comments.length === 0 ? (
-          <p className="mb-3 text-sm text-ink/70">No comments yet.</p>
+          <p className="mb-3 text-sm text-ink/55">No comments yet.</p>
         ) : (
           <ul className="mb-3 flex flex-col gap-3">
             {comments.map((row) => (
-              <li key={row.id} className="rounded-xl bg-cream px-3 py-2">
+              <li key={row.id} className="rounded-xl border border-rule/50 bg-cream/90 px-3.5 py-2.5">
                 <p className="text-xs font-semibold text-ink/60">{row.name}</p>
                 <p className="whitespace-pre-wrap text-sm">{row.text}</p>
               </li>
