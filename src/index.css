@@ -19,6 +19,11 @@ body,
     min-height: 100%;
 }
 
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     margin: 0;
     background: var(--color-cream);
@@ -31,6 +36,13 @@ input,
 select,
 textarea {
     font: inherit;
+}
+
+/* iOS Safari zooms focused controls under 16px; in home-screen apps that zoom sticks. */
+input,
+select,
+textarea {
+    font-size: 16px;
 }
 
 button:not(:disabled),
@@ -107,5 +119,3 @@ button:disabled {
     max-height: 6rem;
     overflow-y: auto;
 }
-
-

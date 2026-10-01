@@ -101,8 +101,8 @@ export function Accordion({ title, children }: { title: string; children: ReactN
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-semibold">{label}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-semibold">{label}</span>
       {children}
     </label>
   )
@@ -112,7 +112,7 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-xl border border-rule bg-cream px-3 py-3 outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
+      className={`w-full rounded-xl border border-rule bg-cream px-3 py-3 text-base outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
     />
   )
 }
@@ -121,7 +121,7 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={`min-h-28 w-full rounded-xl border border-rule bg-cream px-3 py-3 outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
+      className={`min-h-28 w-full rounded-xl border border-rule bg-cream px-3 py-3 text-base outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
     />
   )
 }
