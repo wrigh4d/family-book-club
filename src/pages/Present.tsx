@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { CommentSection } from '../components/CommentSection'
 import { availableShortlist, groupRating, pastHistoryBooks } from '../lib/bookStatus'
 import { friendlyFirebaseError } from '../lib/errors'
 import {
@@ -12,7 +11,7 @@ import {
   recCoverClass,
   recsFill,
 } from '../lib/meetingStage'
-import { isOwner, resolveCurrentBook, savePersonalNote, startConcluding } from '../lib/store'
+import { isOwner, resolveCurrentBook, startConcluding } from '../lib/store'
 import { topWantedGenre } from '../lib/suggestion'
 import { useBookFacts } from '../lib/useBookFacts'
 import { useClub } from '../lib/useClub'
@@ -24,7 +23,13 @@ import {
   roomLine,
   useStageLayout,
 } from './presentHelpers'
-import { NowReading, RatingsPanel, RecommendationsPanel, ShortlistCarousel } from './presentPanels'
+import {
+  MeetingComments,
+  NowReading,
+  RatingsPanel,
+  RecommendationsPanel,
+  ShortlistCarousel,
+} from './presentPanels'
 
 export function Present() {
   const { code, uid, displayName, state, error, setError } = useClub()
@@ -120,15 +125,7 @@ export function Present() {
         />
         <div className={meetingSideClass(mode)}>
           <div className={meetingVoiceClass(mode)}>
-            <section className="meeting-panel flex min-w-0 flex-col rounded-3xl border border-gold/35 bg-burgundy/30 p-4 ring-1 ring-gold/10">
-              <CommentSection
-                tone="meeting"
-                comments={voice.comments}
-                ariaLabel="Comment on the current book"
-                onSave={(text) => savePersonalNote(code, state, uid, text)}
-                onError={(err) => setError(friendlyFirebaseError(err))}
-              />
-            </section>
+            <MeetingComments comments={voice.comments} />
             {voice.ratings.length > 0 ? <RatingsPanel ratings={voice.ratings} /> : null}
           </div>
           {recs.length > 0 ? (
