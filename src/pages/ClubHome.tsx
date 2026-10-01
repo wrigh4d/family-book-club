@@ -151,7 +151,7 @@ function ClubInformation({
   const [copied, setCopied] = useState(false)
   const copiedTimer = useRef<number | null>(null)
   const invite = `${window.location.origin}${import.meta.env.BASE_URL}club/${code}`.replace(
-    /([^:]\/)\/+ /g,
+    /([^:]\/)\/+/g,
     '$1',
   )
 
