@@ -7,7 +7,8 @@ import type {
   Nomination,
   Rule,
 } from '../types'
-import type { CommentLine, LastMeeting, RatingLine } from './presentHelpers'
+import type { CommentLine, LastMeeting, MeetingProgress, RatingLine } from './presentHelpers'
+import { ProgressBadge } from './presentPolish'
 
 export function NowReading({
   current,
@@ -19,6 +20,7 @@ export function NowReading({
   rules,
   previous,
   quiet,
+  progress,
 }: {
   current: CurrentBook
   facts: string
@@ -29,42 +31,46 @@ export function NowReading({
   rules: Rule[]
   previous: LastMeeting | null
   quiet: boolean
+  progress: MeetingProgress
 }) {
   const everyone = ratedCount > 0 && ratedCount === memberCount
   return (
     <section className="meeting-book flex min-h-0 flex-col rounded-3xl bg-burgundy shadow-lg ring-1 ring-gold/30">
       <div className="meeting-book-body min-h-0 flex-1">
-        <div className="flex min-h-full flex-col justify-center p-5 sm:p-7">
-          <p className="shrink-0 text-[11px] uppercase tracking-[0.22em] text-gold">Now reading</p>
-          <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row">
+        <div className="flex min-h-full flex-col justify-center p-5 sm:p-7 xl:p-8 2xl:p-10">
+          <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <p className="text-[11px] uppercase tracking-[0.22em] text-gold xl:text-xs">Now reading</p>
+            <ProgressBadge progress={progress} />
+          </div>
+          <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row 2xl:gap-8">
             <Cover
               src={current.coverUrl}
               title={current.title}
               loading="eager"
-              className="h-52 w-36 shadow-lg ring-1 ring-gold/50 sm:h-64 sm:w-44 lg:h-72 lg:w-48"
+              className="h-52 w-36 shadow-lg ring-1 ring-gold/50 sm:h-64 sm:w-44 lg:h-72 lg:w-48 2xl:h-80 2xl:w-56"
             />
             <div className="min-w-0 flex-1 text-center sm:text-left">
-              <h2 className="font-display text-3xl leading-[1.05] sm:text-4xl lg:text-5xl">
+              <h2 className="font-display text-3xl leading-[1.05] sm:text-4xl lg:text-5xl 2xl:text-6xl">
                 {current.title}
               </h2>
-              <p className="mt-3 text-lg text-cream/80">{current.author}</p>
-              {facts ? <p className="mt-2 text-sm text-cream/60">{facts}</p> : null}
+              <p className="mt-3 text-lg text-cream/80 2xl:text-xl">{current.author}</p>
+              {facts ? <p className="mt-2 text-sm text-cream/60 2xl:text-base">{facts}</p> : null}
               {average != null ? (
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
                   <Stars value={average} large />
-                  <p className="text-sm font-semibold text-gold">
+                  <p className="text-sm font-semibold text-gold 2xl:text-base">
                     {average.toFixed(1)} · {ratedCount} of {memberCount} rated
                   </p>
                 </div>
               ) : (
-                <p className="mt-5 text-sm text-cream/60">No ratings yet</p>
+                <p className="mt-5 text-sm text-cream/60 2xl:text-base">No ratings yet</p>
               )}
               {everyone ? (
-                <p className="mt-2 text-sm text-gold">Everyone has rated</p>
+                <p className="mt-2 text-sm text-gold 2xl:text-base">Everyone has rated</p>
               ) : waiting.length > 0 && ratedCount > 0 ? (
-                <p className="mt-2 text-sm text-cream/60">Still to rate: {waiting.join(', ')}</p>
+                <p className="mt-2 text-sm text-cream/60 2xl:text-base">Still to rate: {waiting.join(', ')}</p>
               ) : null}
-              {quiet ? <p className="mt-2 text-sm text-cream/60">No comments yet</p> : null}
+              {quiet ? <p className="mt-2 text-sm text-cream/60 2xl:text-base">No comments yet</p> : null}
             </div>
           </div>
         </div>

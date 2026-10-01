@@ -9,8 +9,10 @@ import {
   meetingSideClass,
   meetingVoiceClass,
 } from '../lib/meetingStage'
+import { buildSecondaryPanels } from '../lib/secondaryPanels'
 import { isOwner, resolveCurrentBook, startConcluding } from '../lib/store'
 import { topWantedGenre } from '../lib/suggestion'
+import { useAuthorSpotlight } from '../lib/useAuthorSpotlight'
 import { useBookFacts } from '../lib/useBookFacts'
 import { useClub } from '../lib/useClub'
 import {
@@ -22,17 +24,9 @@ import {
   roomLine,
   useStageLayout,
 } from './presentHelpers'
-import {
-  MeetingComments,
-  NowReading,
-  RatingsPanel,
-  ShortlistCarousel,
-} from './presentPanels'
-import {
-  FeaturedQuoteCard,
-  MeetingBackdrop,
-  ProgressBadge,
-} from './presentPolish'
+import { SecondaryCarousel } from './presentCarousel'
+import { NowReading, ShortlistCarousel } from './presentPanels'
+import { MeetingBackdrop } from './presentPolish'
 
 export function Present() {
   const { code, uid, displayName, state, error, setError } = useClub()
@@ -41,6 +35,7 @@ export function Present() {
   const current = state ? resolveCurrentBook(state) : null
   const owner = state && uid ? isOwner(state, uid) : false
   const facts = useBookFacts(current)
+  const spotlight = useAuthorSpotlight(current)
   const voice = useMemo(() => (state ? clubVoice(state) : { comments: [], ratings: [] }), [state])
 
   if (!uid || !displayName || !state) return null
@@ -54,11 +49,14 @@ export function Present() {
   const ratedIds = new Set(voice.ratings.map((row) => row.id))
   const waiting = state.members.filter((member) => !ratedIds.has(member.id))
   const progress = meetingProgress(voice.ratings.length, state.members.length)
-  const quote = featuredQuote(voice.comments)
-  const mode = meetingMode(stage, {
-    comments: Math.max(voice.comments.length, 1),
-    ratings: voice.ratings.length,
+  const featured = featuredQuote(voice.comments)
+  const secondaryPanels = buildSecondaryPanels({
+    comments: voice.comments,
+    ratings: voice.ratings,
+    featured,
+    spotlight,
   })
+  const mode = meetingMode(stage, secondaryPanels.length > 0)
   const readers = state.members.length === 1 ? '1 reader' : `${state.members.length} readers`
   const together =
     past.length === 0
@@ -75,10 +73,7 @@ export function Present() {
       <MeetingBackdrop />
       <header className="relative z-10 flex shrink-0 flex-col gap-3 border-b border-gold/25 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <h1 className="truncate font-display text-xl sm:text-2xl">{state.club.name}</h1>
-            <ProgressBadge progress={progress} />
-          </div>
+          <h1 className="truncate font-display text-xl sm:text-2xl">{state.club.name}</h1>
           <p className="truncate text-sm text-cream/70" title={meta}>
             {meta}
           </p>
@@ -118,12 +113,6 @@ export function Present() {
         </p>
       ) : null}
 
-      {quote ? (
-        <div className="relative z-10 mt-3">
-          <FeaturedQuoteCard quote={quote} />
-        </div>
-      ) : null}
-
       <div className={`relative z-10 ${meetingGridClass(mode, shortlist.length > 0)}`}>
         <NowReading
           current={current}
@@ -135,11 +124,11 @@ export function Present() {
           rules={state.rules}
           previous={previous}
           quiet={voice.comments.length === 0 && voice.ratings.length === 0}
+          progress={progress}
         />
         <div className={meetingSideClass(mode)}>
           <div className={meetingVoiceClass(mode)}>
-            <MeetingComments comments={voice.comments} />
-            {voice.ratings.length > 0 ? <RatingsPanel ratings={voice.ratings} /> : null}
+            <SecondaryCarousel key={secondaryPanels.map((panel) => panel.kind).join("|")} panels={secondaryPanels} />
           </div>
         </div>
         <ShortlistCarousel books={shortlist} members={state.members} />
