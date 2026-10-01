@@ -15,7 +15,9 @@ import { useBookFacts } from '../lib/useBookFacts'
 import { useClub } from '../lib/useClub'
 import {
   clubVoice,
+  featuredQuote,
   lastMeeting,
+  meetingProgress,
   presentActionClass,
   roomLine,
   useStageLayout,
@@ -26,6 +28,11 @@ import {
   RatingsPanel,
   ShortlistCarousel,
 } from './presentPanels'
+import {
+  FeaturedQuoteCard,
+  MeetingBackdrop,
+  ProgressBadge,
+} from './presentPolish'
 
 export function Present() {
   const { code, uid, displayName, state, error, setError } = useClub()
@@ -46,6 +53,8 @@ export function Present() {
   const roomScore = groupRating(Object.fromEntries(voice.ratings.map((row) => [row.id, row.stars])))
   const ratedIds = new Set(voice.ratings.map((row) => row.id))
   const waiting = state.members.filter((member) => !ratedIds.has(member.id))
+  const progress = meetingProgress(voice.ratings.length, state.members.length)
+  const quote = featuredQuote(voice.comments)
   const mode = meetingMode(stage, {
     comments: Math.max(voice.comments.length, 1),
     ratings: voice.ratings.length,
@@ -62,10 +71,14 @@ export function Present() {
   const room = roomLine(state.members)
 
   return (
-    <div className={meetingRootClass(mode)}>
-      <header className="flex shrink-0 flex-col gap-3 border-b border-gold/25 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <div className={`${meetingRootClass(mode)} relative isolate`}>
+      <MeetingBackdrop />
+      <header className="relative z-10 flex shrink-0 flex-col gap-3 border-b border-gold/25 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="min-w-0">
-          <h1 className="truncate font-display text-xl sm:text-2xl">{state.club.name}</h1>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="truncate font-display text-xl sm:text-2xl">{state.club.name}</h1>
+            <ProgressBadge progress={progress} />
+          </div>
           <p className="truncate text-sm text-cream/70" title={meta}>
             {meta}
           </p>
@@ -73,7 +86,7 @@ export function Present() {
             In the room · {room}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="relative z-10 flex shrink-0 flex-wrap gap-2">
           <button
             type="button"
             className={presentActionClass()}
@@ -99,13 +112,19 @@ export function Present() {
       {error ? (
         <p
           role="alert"
-          className="mx-4 mt-3 shrink-0 rounded-xl border border-gold/40 bg-burgundy px-3 py-2 text-sm text-cream sm:mx-6"
+          className="relative z-10 mx-4 mt-3 shrink-0 rounded-xl border border-gold/40 bg-burgundy px-3 py-2 text-sm text-cream sm:mx-6"
         >
           {error}
         </p>
       ) : null}
 
-      <div className={meetingGridClass(mode, shortlist.length > 0)}>
+      {quote ? (
+        <div className="relative z-10 mt-3">
+          <FeaturedQuoteCard quote={quote} />
+        </div>
+      ) : null}
+
+      <div className={`relative z-10 ${meetingGridClass(mode, shortlist.length > 0)}`}>
         <NowReading
           current={current}
           facts={facts}
