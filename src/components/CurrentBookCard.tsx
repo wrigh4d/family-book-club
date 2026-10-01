@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { availableShortlist, clubBookStatus, clubBookStatusLabel } from '../lib/bookStatus'
+import {
+  availableShortlist,
+  clubBookStatus,
+  clubBookStatusLabel,
+  groupRatingLabel,
+} from '../lib/bookStatus'
 import {
   changeCurrentBook,
   clubBookComments,
@@ -13,7 +18,7 @@ import { useBookSearch } from '../lib/useBookSearch'
 import type { ClubState, CurrentBook } from '../types'
 import { BookPickList, BookRow, BookSearchForm } from './bookSearch'
 import { CommentSection } from './CommentSection'
-import { Button, Card, CardTitle, Cover, ErrorBanner, Subhead, TextButton } from './ui'
+import { Button, Card, CardTitle, Cover, ErrorBanner, Eyebrow, Subhead, TextButton } from './ui'
 
 export function CurrentBookCard({
   code,
@@ -30,7 +35,8 @@ export function CurrentBookCard({
 }) {
   const current = resolveCurrentBook(state)
   const history = currentHistoryBook(state)
-  const myRating = history?.ratings[uid]
+  const ratings = history?.ratings ?? {}
+  const myRating = ratings[uid]
   const [changeForId, setChangeForId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const changing = Boolean(current && changeForId === current.olid)
@@ -73,10 +79,11 @@ export function CurrentBookCard({
           loading="eager"
           className="h-36 w-24 shadow-md ring-1 ring-gold/35 sm:h-48 sm:w-32"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-display text-2xl leading-tight break-words">{current.title}</p>
           <p className="text-sm text-ink/70">{current.author}</p>
           {facts ? <p className="mt-1 text-sm text-ink/60">{facts}</p> : null}
+          <p className="mt-2 text-sm font-semibold text-burgundy">{groupRatingLabel(ratings)}</p>
         </div>
       </div>
       {changing ? (
@@ -88,29 +95,42 @@ export function CurrentBookCard({
         />
       ) : (
         <>
-          <div>
-            <Subhead>Rating</Subhead>
-            <div className="flex gap-1.5" role="group" aria-label="Rate the current book">
-              {[1, 2, 3, 4, 5].map((stars) => {
-                const filled = myRating != null && stars <= myRating
-                return (
-                  <button
-                    key={stars}
-                    type="button"
-                    aria-label={`Rate ${stars} out of 5`}
-                    aria-pressed={myRating === stars}
-                    className={`grid h-11 w-11 place-items-center rounded-full border transition duration-150 ${
-                      filled
-                        ? 'border-gold/70 bg-gold/15 text-gold'
-                        : 'border-rule bg-cream text-ink/30 hover:border-gold hover:text-gold'
-                    }`}
-                    onClick={() => rateCurrentBook(code, state, uid, stars).catch(onError)}
-                  >
-                    <StarIcon filled={filled} />
-                  </button>
-                )
-              })}
+          <div className="rounded-xl border border-gold/45 bg-gold/[0.08] p-4 shadow-[var(--shadow-card)]">
+            <Eyebrow>Your rating</Eyebrow>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <div className="flex gap-1.5" role="group" aria-label="Rate the current book">
+                {[1, 2, 3, 4, 5].map((stars) => {
+                  const filled = myRating != null && stars <= myRating
+                  return (
+                    <button
+                      key={stars}
+                      type="button"
+                      aria-label={`Rate ${stars} out of 5`}
+                      aria-pressed={myRating === stars}
+                      className={`grid h-12 w-12 place-items-center rounded-full border-2 transition duration-150 sm:h-14 sm:w-14 ${
+                        filled
+                          ? 'border-gold bg-gold/20 text-gold shadow-sm'
+                          : 'border-rule bg-paper text-ink/25 hover:border-gold hover:text-gold'
+                      }`}
+                      onClick={() => rateCurrentBook(code, state, uid, stars).catch(onError)}
+                    >
+                      <StarIcon filled={filled} />
+                    </button>
+                  )
+                })}
+              </div>
+              {myRating != null ? (
+                <p className="min-w-0 font-display text-3xl leading-none tracking-tight text-burgundy tabular-nums sm:text-4xl">
+                  {myRating}
+                  <span className="text-lg font-sans font-semibold text-ink/45 sm:text-xl">/5</span>
+                </p>
+              ) : (
+                <p className="min-w-0 text-sm font-semibold text-ink/55">Tap a star</p>
+              )}
             </div>
+            <p className="mt-2 text-sm text-ink/60">
+              {myRating != null ? 'Saved with the club.' : 'Share how this book is going.'}
+            </p>
           </div>
           <CommentSection
             comments={comments}
@@ -211,7 +231,7 @@ function ChangeCurrentPicker({
 
 function StarIcon({ filled }: { filled: boolean }) {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5">
+    <svg viewBox="0 0 20 20" aria-hidden="true" className="h-6 w-6 sm:h-7 sm:w-7">
       <path
         fill={filled ? 'currentColor' : 'none'}
         stroke="currentColor"
