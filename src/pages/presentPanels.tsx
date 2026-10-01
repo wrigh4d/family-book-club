@@ -1,14 +1,13 @@
 import { type ReactNode, useState } from 'react'
 import { Cover } from '../components/ui'
 import { formatCommentTime } from '../lib/comments'
-import { formatBookFacts } from '../lib/bookMeta'
 import type {
   CurrentBook,
   Member,
   Nomination,
   Rule,
 } from '../types'
-import type { CommentLine, LastMeeting, RatingLine, RecSlide } from './presentHelpers'
+import type { CommentLine, LastMeeting, RatingLine } from './presentHelpers'
 
 export function NowReading({
   current,
@@ -169,43 +168,6 @@ export function RatingsPanel({ ratings }: { ratings: RatingLine[] }) {
           </span>
         </div>
       ))}
-    </Panel>
-  )
-}
-
-export function RecommendationsPanel({
-  recs,
-  fill,
-  cover,
-}: {
-  recs: RecSlide[]
-  fill: boolean
-  cover: string
-}) {
-  return (
-    <Panel title="For next time">
-      {recs.map((slide) => {
-        const facts = formatBookFacts(slide.rec)
-        return (
-          <article
-            key={slide.id}
-            className={`flex min-h-0 gap-3 border-t border-gold/20 pt-3 first:border-t-0 first:pt-0 ${
-              fill ? 'flex-1' : ''
-            }`}
-          >
-            <Cover src={slide.rec.coverUrl} title={slide.rec.title} className={cover} />
-            <div className="min-w-0">
-              <p className="text-xs text-cream/60">{slide.label}</p>
-              <h3 className="mt-1 font-display text-lg leading-tight break-words">
-                {slide.rec.title}
-              </h3>
-              <p className="mt-1 text-sm text-cream/80">{slide.rec.author}</p>
-              {facts ? <p className="mt-1 text-xs text-cream/60">{facts}</p> : null}
-              <p className="mt-2 text-sm leading-snug text-cream/85">{slide.rec.why}</p>
-            </div>
-          </article>
-        )
-      })}
     </Panel>
   )
 }
