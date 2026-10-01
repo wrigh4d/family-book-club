@@ -41,7 +41,7 @@ export function ShortlistPage() {
       <ErrorBanner message={error} />
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card className="flex flex-col gap-4">
-          <CardTitle>Add a book</CardTitle>
+          <CardTitle>Add</CardTitle>
           <Nominate
             state={state}
             onAdd={async (hit) => {

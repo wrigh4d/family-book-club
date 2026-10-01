@@ -28,8 +28,8 @@ export function MyClubs() {
   return (
     <Page width="wide">
       <header className="flex flex-col gap-2">
-        <h1 className="font-display text-4xl leading-tight">Your clubs</h1>
-        <p className="text-ink/80">Open a club you’ve created or joined.</p>
+        <h1 className="font-display text-4xl leading-[1.1] tracking-tight">Your clubs</h1>
+        <p className="text-ink/70">Clubs you created or joined.</p>
       </header>
       <ErrorBanner message={clubsError ?? error} />
       <Card>
@@ -38,12 +38,12 @@ export function MyClubs() {
         ) : (
           <ClubList
             clubs={clubs}
-            empty="You haven’t joined a club yet. Create one or enter a code on the home page."
+            empty="No clubs yet. Create or join one from home."
           />
         )}
       </Card>
       <Button type="button" variant="ghost" className="sm:self-start" onClick={() => navigate('/')}>
-        Create or join another club
+        Create or join
       </Button>
     </Page>
   )
