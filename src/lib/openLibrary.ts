@@ -210,17 +210,29 @@ type WorkResponse = {
   subject_places?: string[]
 }
 
+const workSubjectsCache = new Map<string, Promise<string[]>>()
+const workFactsCache = new Map<
+  string,
+  Promise<{ firstPublishYear: number | null; pageCount: number | null } | null>
+>()
+
 export async function fetchWorkSubjects(olid: string): Promise<string[]> {
   const key = olid.startsWith('/works/') ? olid : `/works/${olid}`
-  try {
-    const data = await fetchJson<WorkResponse>(
-      `https://openlibrary.org${key}.json`,
-      'Could not load work subjects.',
-    )
-    return (data.subjects ?? []).map((tag) => tag.trim()).filter(Boolean)
-  } catch {
-    return []
-  }
+  const cached = workSubjectsCache.get(key)
+  if (cached) return cached
+  const pending = (async () => {
+    try {
+      const data = await fetchJson<WorkResponse>(
+        `https://openlibrary.org${key}.json`,
+        'Could not load work subjects.',
+      )
+      return (data.subjects ?? []).map((tag) => tag.trim()).filter(Boolean)
+    } catch {
+      return []
+    }
+  })()
+  workSubjectsCache.set(key, pending)
+  return pending
 }
 
 export async function fetchWorkFacts(olid: string): Promise<{
@@ -228,17 +240,23 @@ export async function fetchWorkFacts(olid: string): Promise<{
   pageCount: number | null
 } | null> {
   const key = olid.startsWith('/') ? olid : `/works/${olid}`
-  try {
-    const data = await fetchJson<OpenLibrarySearch>(
-      `https://openlibrary.org/search.json?q=${encodeURIComponent(`key:${key}`)}&limit=1&fields=${SEARCH_FIELDS}`,
-      'Could not load book details.',
-    )
-    const hit = hitsFromDocs(data.docs)[0]
-    if (!hit) return null
-    return { firstPublishYear: hit.firstPublishYear, pageCount: hit.pageCount }
-  } catch {
-    return null
-  }
+  const cached = workFactsCache.get(key)
+  if (cached) return cached
+  const pending = (async () => {
+    try {
+      const data = await fetchJson<OpenLibrarySearch>(
+        `https://openlibrary.org/search.json?q=${encodeURIComponent(`key:${key}`)}&limit=1&fields=${SEARCH_FIELDS}`,
+        'Could not load book details.',
+      )
+      const hit = hitsFromDocs(data.docs)[0]
+      if (!hit) return null
+      return { firstPublishYear: hit.firstPublishYear, pageCount: hit.pageCount }
+    } catch {
+      return null
+    }
+  })()
+  workFactsCache.set(key, pending)
+  return pending
 }
 
 function subjectQuery(tag: string): string {
