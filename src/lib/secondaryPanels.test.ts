@@ -21,20 +21,13 @@ const rating = (id: string, stars: number): PanelRating => ({
 })
 
 describe('buildSecondaryPanels', () => {
-  const spotlight = {
-    kind: 'quote' as const,
-    text: 'Books are magic.',
-    attribution: 'Author',
-  }
-
-  it('always includes the author spotlight', () => {
+  it('returns no panels when everything is empty', () => {
     const panels = buildSecondaryPanels({
       comments: [],
       ratings: [],
       featured: null,
-      spotlight,
     })
-    expect(panels).toEqual([{ kind: 'spotlight', spotlight }])
+    expect(panels).toEqual([])
   })
 
   it('skips empty comments and ratings but keeps featured when present', () => {
@@ -43,12 +36,11 @@ describe('buildSecondaryPanels', () => {
       comments: [],
       ratings: [],
       featured,
-      spotlight,
     })
-    expect(panels.map((p) => p.kind)).toEqual(['featured', 'spotlight'])
+    expect(panels.map((p) => p.kind)).toEqual(['featured'])
   })
 
-  it('orders comments, ratings, featured, then spotlight', () => {
+  it('orders comments, ratings, then featured', () => {
     const comments = [comment('c', 'Loved the pace of this one a lot.')]
     const ratings = [rating('r', 5)]
     const featured = comments[0]
@@ -56,14 +48,8 @@ describe('buildSecondaryPanels', () => {
       comments,
       ratings,
       featured,
-      spotlight,
     })
-    expect(panels.map((p) => p.kind)).toEqual([
-      'comments',
-      'ratings',
-      'featured',
-      'spotlight',
-    ])
+    expect(panels.map((p) => p.kind)).toEqual(['comments', 'ratings', 'featured'])
   })
 })
 
