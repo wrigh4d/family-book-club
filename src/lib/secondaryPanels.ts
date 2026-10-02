@@ -1,5 +1,3 @@
-import type { AuthorSpotlight } from './authorSpotlight'
-
 export const SECONDARY_ROTATION_MS = 10_000
 
 export type PanelComment = {
@@ -15,20 +13,18 @@ export type PanelRating = {
   stars: number
 }
 
-export type SecondaryPanelKind = 'comments' | 'ratings' | 'featured' | 'spotlight'
+export type SecondaryPanelKind = 'comments' | 'ratings' | 'featured'
 
 export type SecondaryPanel =
   | { kind: 'comments'; comments: PanelComment[] }
   | { kind: 'ratings'; ratings: PanelRating[] }
   | { kind: 'featured'; comment: PanelComment }
-  | { kind: 'spotlight'; spotlight: AuthorSpotlight }
 
 /** Build Present secondary carousel slides, skipping empty ones. */
 export function buildSecondaryPanels(input: {
   comments: PanelComment[]
   ratings: PanelRating[]
   featured: PanelComment | null
-  spotlight: AuthorSpotlight
 }): SecondaryPanel[] {
   const panels: SecondaryPanel[] = []
   if (input.comments.length > 0) {
@@ -40,7 +36,6 @@ export function buildSecondaryPanels(input: {
   if (input.featured) {
     panels.push({ kind: 'featured', comment: input.featured })
   }
-  panels.push({ kind: 'spotlight', spotlight: input.spotlight })
   return panels
 }
 

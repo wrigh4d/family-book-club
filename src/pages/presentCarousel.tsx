@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { AuthorSpotlight } from '../lib/authorSpotlight'
 import {
   SECONDARY_ROTATION_MS,
   nextSecondaryIndex,
@@ -118,36 +117,6 @@ function FeaturedSlide({ comment }: { comment: CommentLine }) {
   )
 }
 
-function SpotlightSlide({ spotlight }: { spotlight: AuthorSpotlight }) {
-  const label = spotlight.kind === 'quote' ? 'Author quote' : 'Fun fact'
-  return (
-    <div className="meeting-secondary-body meeting-secondary-feature">
-      <p className="meeting-secondary-label">{label}</p>
-      {spotlight.kind === 'quote' ? (
-        <blockquote className="mt-meeting">
-          <p className="meeting-secondary-quote">
-            <span className="text-gold/80" aria-hidden="true">
-              {'\u201C'}
-            </span>
-            {spotlight.text}
-            <span className="text-gold/80" aria-hidden="true">
-              {'\u201D'}
-            </span>
-          </p>
-          <footer className="meeting-secondary-cite">
-            <cite className="not-italic font-semibold text-gold">{spotlight.attribution}</cite>
-          </footer>
-        </blockquote>
-      ) : (
-        <div className="mt-meeting">
-          <p className="meeting-secondary-quote">{spotlight.text}</p>
-          <p className="meeting-secondary-cite font-semibold text-gold">{spotlight.attribution}</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function renderPanel(panel: SecondaryPanel) {
   switch (panel.kind) {
     case 'comments':
@@ -156,8 +125,6 @@ function renderPanel(panel: SecondaryPanel) {
       return <RatingsSlide ratings={panel.ratings} />
     case 'featured':
       return <FeaturedSlide comment={panel.comment} />
-    case 'spotlight':
-      return <SpotlightSlide spotlight={panel.spotlight} />
   }
 }
 
@@ -169,8 +136,6 @@ function panelLabel(panel: SecondaryPanel): string {
       return 'Ratings'
     case 'featured':
       return 'Featured comment'
-    case 'spotlight':
-      return panel.spotlight.kind === 'quote' ? 'Author quote' : 'Fun fact'
   }
 }
 

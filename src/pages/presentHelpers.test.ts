@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { featuredQuote, meetingProgress, type CommentLine } from './presentHelpers'
+import { featuredQuote, type CommentLine } from './presentHelpers'
 
 function comment(partial: Partial<CommentLine> & Pick<CommentLine, 'id' | 'text'>): CommentLine {
   return {
@@ -43,27 +43,5 @@ describe('featuredQuote', () => {
     const a = comment({ id: 'a', text: 'Hi', at: 1 })
     const b = comment({ id: 'b', text: 'Loved it', at: 2 })
     expect(featuredQuote([a, b])?.id).toBe('b')
-  })
-})
-
-describe('meetingProgress', () => {
-  it('labels partial rating progress without em dashes', () => {
-    const row = meetingProgress(2, 5)
-    expect(row.label).toBe('Rated 2 of 5')
-    expect(row.label.includes('\u2014')).toBe(false)
-    expect(row.complete).toBe(false)
-    expect(row.fraction).toBeCloseTo(0.4)
-  })
-
-  it('marks everyone rated', () => {
-    const row = meetingProgress(3, 3)
-    expect(row.label).toBe('All rated')
-    expect(row.complete).toBe(true)
-    expect(row.fraction).toBe(1)
-  })
-
-  it('clamps rated counts to the member total', () => {
-    expect(meetingProgress(9, 4).rated).toBe(4)
-    expect(meetingProgress(-1, 2).rated).toBe(0)
   })
 })

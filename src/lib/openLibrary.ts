@@ -1,9 +1,4 @@
 import type { Genre } from '../types'
-import {
-  funFactFromAuthor,
-  normalizeWorkKey,
-  type AuthorSpotlight,
-} from './authorSpotlight'
 
 export type BookSearchHit = {
   olid: string
@@ -285,44 +280,4 @@ export async function bookMatchingTags(
     'Could not load a ratings-based recommendation.',
   )
   return firstUnused(hitsFromDocs(data.docs), new Set(excludeOlids), disliked)
-}
-
-type AuthorBioResponse = {
-  name?: string
-  bio?: string | { value?: string } | null
-  birth_date?: string | null
-  death_date?: string | null
-}
-
-type WorkAuthorsResponse = {
-  authors?: Array<{ author?: { key?: string } }>
-}
-
-const authorSpotlightCache = new Map<string, Promise<AuthorSpotlight | null>>()
-
-/** Fetch a short Open Library author fun fact for a work olid. */
-export async function fetchAuthorSpotlightFact(olid: string): Promise<AuthorSpotlight | null> {
-  const key = normalizeWorkKey(olid)
-  if (!key) return null
-  const cached = authorSpotlightCache.get(key)
-  if (cached) return cached
-  const pending = (async () => {
-    try {
-      const work = await fetchJson<WorkAuthorsResponse>(
-        `https://openlibrary.org${key}.json`,
-        'Could not load work authors.',
-      )
-      const authorKey = work.authors?.[0]?.author?.key
-      if (!authorKey) return null
-      const author = await fetchJson<AuthorBioResponse>(
-        `https://openlibrary.org${authorKey}.json`,
-        'Could not load author details.',
-      )
-      return funFactFromAuthor(author)
-    } catch {
-      return null
-    }
-  })()
-  authorSpotlightCache.set(key, pending)
-  return pending
 }

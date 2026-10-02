@@ -248,26 +248,6 @@
     transform: scale(1.15);
 }
 
-.meeting-progress-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--color-gold) 40%, transparent);
-    background: color-mix(in srgb, var(--color-burgundy) 40%, transparent);
-    padding: 0.375rem 0.75rem;
-    color: var(--color-cream);
-    font-size: 0.75rem;
-    font-weight: 600;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-gold) 15%, transparent);
-}
-
-.meeting-progress-inline .label {
-    color: var(--color-gold);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.04em;
-}
-
 /* Large stage / TV: one dominant secondary panel, bigger type, more air. */
 @media (min-width: 1024px) {
     .meeting-secondary {
@@ -348,10 +328,6 @@
         height: 0.5rem;
     }
 
-    .meeting-progress-inline {
-        padding: 0.5rem 0.9rem;
-        font-size: 0.85rem;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

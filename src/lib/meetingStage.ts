@@ -10,10 +10,6 @@ export function meetingMode(stage: boolean, hasSecondary: boolean): MeetingMode 
   return { kind: 'side', pair: false }
 }
 
-export function meetingLocked(mode: MeetingMode): boolean {
-  return mode.kind !== 'scroll'
-}
-
 const TONE = 'bg-[radial-gradient(ellipse_at_top,#3a241c_0%,#1c1612_58%)] text-cream'
 
 export function meetingRootClass(mode: MeetingMode): string {
