@@ -1,14 +1,12 @@
-import { type ReactNode, useState } from 'react'
+import { useState } from 'react'
 import { Cover } from '../components/ui'
-import { formatCommentTime } from '../lib/comments'
 import type {
   CurrentBook,
   Member,
   Nomination,
   Rule,
 } from '../types'
-import type { CommentLine, LastMeeting, MeetingProgress, RatingLine } from './presentHelpers'
-import { ProgressBadge } from './presentPolish'
+import type { LastMeeting } from './presentHelpers'
 
 export function NowReading({
   current,
@@ -20,7 +18,6 @@ export function NowReading({
   rules,
   previous,
   quiet,
-  progress,
 }: {
   current: CurrentBook
   facts: string
@@ -31,17 +28,15 @@ export function NowReading({
   rules: Rule[]
   previous: LastMeeting | null
   quiet: boolean
-  progress: MeetingProgress
 }) {
   const everyone = ratedCount > 0 && ratedCount === memberCount
   return (
     <section className="meeting-book flex min-h-0 flex-col rounded-3xl bg-burgundy shadow-lg ring-1 ring-gold/30">
       <div className="meeting-book-body min-h-0 flex-1">
         <div className="flex min-h-full flex-col justify-center p-5 sm:p-7 xl:p-8 2xl:p-10">
-          <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-gold xl:text-xs">Now reading</p>
-            <ProgressBadge progress={progress} />
-          </div>
+          <p className="shrink-0 text-center text-[11px] uppercase tracking-[0.22em] text-gold sm:text-left xl:text-xs">
+            Now reading
+          </p>
           <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row 2xl:gap-8">
             <Cover
               src={current.coverUrl}
@@ -100,81 +95,6 @@ export function NowReading({
         </footer>
       ) : null}
     </section>
-  )
-}
-
-/** Read-only animated club comments for Present (no compose input). */
-export function MeetingComments({ comments }: { comments: CommentLine[] }) {
-  const title =
-    comments.length === 0
-      ? 'Comments'
-      : comments.length === 1
-        ? 'Comments · 1'
-        : `Comments · ${comments.length}`
-  return (
-    <section className="meeting-panel flex min-w-0 flex-col rounded-3xl border border-gold/35 bg-burgundy/30 p-4 ring-1 ring-gold/10">
-      <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-cream">
-        <span aria-hidden="true" className="h-3.5 w-0.5 rounded-full bg-gold" />
-        {title}
-      </p>
-      {comments.length === 0 ? (
-        <p className="text-sm text-cream/60">No comments yet.</p>
-      ) : (
-        <ul className="meeting-panel-body meeting-comments mt-1 flex flex-col gap-2">
-          {comments.map((row, index) => {
-            const when = formatCommentTime(row.at)
-            return (
-              <li
-                key={row.id}
-                className="meeting-comment rounded-xl border border-gold/25 bg-burgundy/35 px-3.5 py-2.5"
-                style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="text-xs font-semibold text-gold">{row.name}</p>
-                  {when ? (
-                    <time
-                      dateTime={new Date(row.at).toISOString()}
-                      className="text-[11px] tabular-nums text-cream/50"
-                    >
-                      {when}
-                    </time>
-                  ) : null}
-                </div>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-snug text-cream">{row.text}</p>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </section>
-  )
-}
-
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="meeting-panel flex min-w-0 flex-col rounded-3xl border border-gold/35 bg-burgundy/30 p-4 ring-1 ring-gold/10">
-      <p className="shrink-0 text-[11px] uppercase tracking-[0.22em] text-gold">{title}</p>
-      <div className="meeting-panel-body mt-3 flex flex-col gap-3">{children}</div>
-    </section>
-  )
-}
-
-export function RatingsPanel({ ratings }: { ratings: RatingLine[] }) {
-  const title = ratings.length === 1 ? 'Ratings · 1' : `Ratings · ${ratings.length}`
-  return (
-    <Panel title={title}>
-      {ratings.map((line) => (
-        <div key={line.id} className="flex items-center justify-between gap-3">
-          <p className="min-w-0 truncate text-sm">{line.name}</p>
-          <span className="flex items-center gap-2">
-            <Stars value={line.stars} />
-            <span className="w-4 text-right text-sm font-semibold text-gold tabular-nums">
-              {line.stars}
-            </span>
-          </span>
-        </div>
-      ))}
-    </Panel>
   )
 }
 
