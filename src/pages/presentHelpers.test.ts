@@ -9,6 +9,7 @@ function comment(partial: Partial<CommentLine> & Pick<CommentLine, 'id' | 'text'
     text: partial.text,
   }
 }
+
 describe('featuredQuote', () => {
   it('returns null when there are no comments', () => {
     expect(featuredQuote([])).toBeNull()

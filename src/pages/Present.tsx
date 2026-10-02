@@ -12,14 +12,12 @@ import {
 import { buildSecondaryPanels } from '../lib/secondaryPanels'
 import { isOwner, resolveCurrentBook, startConcluding } from '../lib/store'
 import { topWantedGenre } from '../lib/suggestion'
-import { useAuthorSpotlight } from '../lib/useAuthorSpotlight'
 import { useBookFacts } from '../lib/useBookFacts'
 import { useClub } from '../lib/useClub'
 import {
   clubVoice,
   featuredQuote,
   lastMeeting,
-  meetingProgress,
   presentActionClass,
   roomLine,
   useStageLayout,
@@ -35,7 +33,6 @@ export function Present() {
   const current = state ? resolveCurrentBook(state) : null
   const owner = state && uid ? isOwner(state, uid) : false
   const facts = useBookFacts(current)
-  const spotlight = useAuthorSpotlight(current)
   const voice = useMemo(() => (state ? clubVoice(state) : { comments: [], ratings: [] }), [state])
 
   if (!uid || !displayName || !state) return null
@@ -48,13 +45,11 @@ export function Present() {
   const roomScore = groupRating(Object.fromEntries(voice.ratings.map((row) => [row.id, row.stars])))
   const ratedIds = new Set(voice.ratings.map((row) => row.id))
   const waiting = state.members.filter((member) => !ratedIds.has(member.id))
-  const progress = meetingProgress(voice.ratings.length, state.members.length)
   const featured = featuredQuote(voice.comments)
   const secondaryPanels = buildSecondaryPanels({
     comments: voice.comments,
     ratings: voice.ratings,
     featured,
-    spotlight,
   })
   const mode = meetingMode(stage, secondaryPanels.length > 0)
   const readers = state.members.length === 1 ? '1 reader' : `${state.members.length} readers`
@@ -124,11 +119,10 @@ export function Present() {
           rules={state.rules}
           previous={previous}
           quiet={voice.comments.length === 0 && voice.ratings.length === 0}
-          progress={progress}
         />
         <div className={meetingSideClass(mode)}>
           <div className={meetingVoiceClass(mode)}>
-            <SecondaryCarousel key={secondaryPanels.map((panel) => panel.kind).join("|")} panels={secondaryPanels} />
+            <SecondaryCarousel key={secondaryPanels.map((panel) => panel.kind).join('|')} panels={secondaryPanels} />
           </div>
         </div>
         <ShortlistCarousel books={shortlist} members={state.members} />
