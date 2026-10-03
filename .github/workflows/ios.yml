@@ -1,0 +1,60 @@
+# Builds the Capacitor iOS project for the simulator without Apple signing.
+# This workflow does not upload to TestFlight. That needs Nick's Apple Developer
+# enrollment, a distribution certificate, a provisioning profile, and an
+# App Store Connect API key. Those secrets are intentionally not referenced,
+# so a missing secret cannot fail the Pages deploy workflow.
+
+name: iOS Capacitor
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-simulator:
+    name: Simulator build (no Apple signing)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: xcodebuild Debug for iOS Simulator
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+      - name: TestFlight is not part of this workflow
+        run: |
+          echo "::notice title=TestFlight not configured::No IPA is uploaded. TestFlight needs an Apple Developer Program membership, distribution certificate, provisioning profile, and App Store Connect API key (key id, issuer id, and private key). None of those are available to this job."
+
+  testflight:
+    name: TestFlight upload (blocked — needs Apple secrets)
+    runs-on: macos-latest
+    # Never scheduled. Left in the file so the missing upload is explicit.
+    # Do not flip this on until the Apple secrets above exist.
+    if: ${{ false }}
+    steps:
+      - name: Refusing to upload without Apple credentials
+        run: |
+          echo "Refusing to upload to TestFlight. Required secrets are not configured:"
+          echo "  Apple distribution certificate and provisioning profile"
+          echo "  App Store Connect API key id, issuer id, and private key"
+          exit 1
