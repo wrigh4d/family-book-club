@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Family Book Club</string>
+    <string name="title_activity_main">Family Book Club</string>
+    <string name="package_name">com.wrigh4d.familybookclub</string>
+    <string name="custom_url_scheme">com.wrigh4d.familybookclub</string>
+</resources>
