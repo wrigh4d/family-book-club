@@ -16,10 +16,56 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Debug uses AGP's built-in debug keystore (~/.android/debug.keystore). No upload key is required.
+    // Release signing is applied only when a real keystore and passwords are supplied.
+    // Local: android/keystore.properties (gitignored). See android/keystore.properties.example.
+    // CI: ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+    // This file never creates a keystore and never embeds passwords.
+    def keystoreProperties = new Properties()
+    def keystorePropertiesFile = rootProject.file("keystore.properties")
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    }
+    def signingValue = { String envName, String propName ->
+        def fromEnv = System.getenv(envName)
+        if (fromEnv?.trim()) return fromEnv.trim()
+        def fromFile = keystoreProperties.getProperty(propName)
+        if (fromFile?.trim()) return fromFile.trim()
+        return null
+    }
+    def releaseStorePath = signingValue("ANDROID_KEYSTORE_PATH", "storeFile")
+    def releaseStorePassword = signingValue("ANDROID_KEYSTORE_PASSWORD", "storePassword")
+    def releaseKeyAlias = signingValue("ANDROID_KEY_ALIAS", "keyAlias")
+    def releaseKeyPassword = signingValue("ANDROID_KEY_PASSWORD", "keyPassword")
+    def releaseSigningReady = releaseStorePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
+    signingConfigs {
+        if (releaseSigningReady) {
+            release {
+                def store = new File(releaseStorePath)
+                if (!store.isAbsolute()) {
+                    store = rootProject.file(releaseStorePath)
+                }
+                if (!store.isFile()) {
+                    throw new GradleException("Release keystore not found at ${store}. Set ANDROID_KEYSTORE_PATH or storeFile in android/keystore.properties to the real keystore. This build will not create one.")
+                }
+                storeFile store
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (releaseSigningReady) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
