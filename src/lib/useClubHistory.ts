@@ -35,10 +35,10 @@ export function useClubHistory(code: string | null) {
 /** Meeting, shortlist, and conclude read the finished catalog. Pass the live snapshot to the current-book card. */
 export function useFinishedCatalog(code: string | null, live: ClubState | null): ClubState | null {
   const history = useClubHistory(live && code ? code : null)
-  const { books, ready } = history
+  const { books, ready, error } = history
   return useMemo(() => {
     if (!live) return null
-    if (!ready) return live
+    if (!ready || error) return live
     return withFinishedCatalog(live, books)
-  }, [live, ready, books])
+  }, [live, ready, error, books])
 }

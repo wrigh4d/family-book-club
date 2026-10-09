@@ -40,7 +40,6 @@ import {
   currentHistoryBook,
   currentHistoryId,
   findMatchingClubBook,
-  historyDocId,
   isOwner,
   resolveCurrentBook,
   staleShortlist,
@@ -444,9 +443,19 @@ export function subscribeClub(
   let historyDocUnsub: Unsubscribe | null = null
   let listenedHistoryId: string | null = null
 
+  const snapshot = (): ClubState | null => {
+    if (!club) return null
+    return { club, members, rules, round, genreVotes, nominations, history }
+  }
+
   const emit = () => {
-    if (!club) return
-    onData({ club, members, rules, round, genreVotes, nominations, history })
+    const next = snapshot()
+    if (next) onData(next)
+  }
+
+  const syncCurrentHistory = () => {
+    const next = snapshot()
+    listenToCurrentHistory(next ? currentHistoryId(next) : null)
   }
 
   const listenToRound = (roundId: string) => {
@@ -460,6 +469,7 @@ export function subscribeClub(
         rRef,
         (snap) => {
           round = snap.exists() ? asRound(snap.id, dataOf(snap)) : null
+          syncCurrentHistory()
           emit()
         },
         (err) => onError(err),
@@ -508,8 +518,7 @@ export function subscribeClub(
         }
         club = asClub(code, dataOf(snap))
         if (club.currentRoundId) listenToRound(club.currentRoundId)
-        const currentOlid = club.currentBook?.olid
-        listenToCurrentHistory(currentOlid ? historyDocId(currentOlid) : null)
+        syncCurrentHistory()
         emit()
       },
       (err) => onError(err),
@@ -540,6 +549,7 @@ export function subscribeClub(
         nominations = snap.docs
           .map((row) => asNomination(row.id, dataOf(row)))
           .sort((a, b) => a.createdAt - b.createdAt)
+        syncCurrentHistory()
         emit()
       },
       (err) => onError(err),
@@ -945,9 +955,17 @@ async function upsertCurrentHistory(
       },
       lookupSubjects: () => fetchWorkSubjects(book.olid),
       storeSubjects: async (subjects) => {
-        await updateDoc(historyRef, { subjects: subjectList(subjects, asGenre(book.genre)) }).catch(
-          () => undefined,
-        )
+        try {
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(historyRef)
+            if (!snap.exists()) return
+            const stored = snap.data().subjects
+            if (Array.isArray(stored) && stored.length > 0) return
+            tx.update(historyRef, { subjects: subjectList(subjects, asGenre(book.genre)) })
+          })
+        } catch {
+          // The rating is already saved. Subjects can wait for a later write.
+        }
       },
     },
     existing?.subjects,

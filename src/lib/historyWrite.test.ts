@@ -45,6 +45,22 @@ describe('reactionFields', () => {
 })
 
 describe('commitReaction', () => {
+  it('records a comment even when subject lookup never returns', async () => {
+    let note: unknown
+    await commitReaction(
+      {
+        write: async () => {
+          note = reactionFields(dune, 'r1', 'u1', { note: 'Halfway' })['notes.u1']
+        },
+        lookupSubjects: () => new Promise(() => undefined),
+        storeSubjects: async () => undefined,
+      },
+      [],
+      dune.olid,
+    )
+    expect(note).toBe('Halfway')
+  })
+
   it('records the rating even when subject lookup never returns', async () => {
     let written = false
     await commitReaction(
