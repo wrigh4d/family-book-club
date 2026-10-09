@@ -28,13 +28,15 @@ import {
 } from '../lib/store'
 import { clubBookStatus, clubBookStatusLabel } from '../lib/bookStatus'
 import { useClub } from '../lib/useClub'
+import { useFinishedCatalog } from '../lib/useClubHistory'
 import { type ClubState, recToCurrentBook } from '../types'
 
 export function ClubHome() {
   const { code, uid, displayName, state, error, setError } = useClub()
+  const catalog = useFinishedCatalog(code, state)
   const navigate = useNavigate()
 
-  if (!uid || !displayName || !state) return null
+  if (!uid || !displayName || !state || !catalog) return null
 
   const current = resolveCurrentBook(state)
   const owner = isOwner(state, uid)
@@ -75,7 +77,7 @@ export function ClubHome() {
       code={code}
       uid={uid}
       displayName={displayName}
-      state={state}
+      state={catalog}
       owner={owner}
       onError={onError}
     />
@@ -83,7 +85,7 @@ export function ClubHome() {
   if (!current) {
     body = owner ? (
       <FirstBookSetup
-        statusFor={(book) => clubBookStatusLabel(clubBookStatus(state, book))}
+        statusFor={(book) => clubBookStatusLabel(clubBookStatus(catalog, book))}
         onPick={(book) => setStartingBook(code, state, uid, book).catch(onError)}
       />
     ) : (
@@ -97,7 +99,14 @@ export function ClubHome() {
   } else if (status === 'collecting') {
     body = (
       <>
-        <CurrentBookCard code={code} uid={uid} state={state} owner={owner} onError={onError} />
+        <CurrentBookCard
+          code={code}
+          uid={uid}
+          state={state}
+          catalog={catalog}
+          owner={owner}
+          onError={onError}
+        />
         {genres}
         {owner ? (
           <Button
@@ -117,12 +126,19 @@ export function ClubHome() {
   } else if (status === 'presenting') {
     body = (
       <>
-        <CurrentBookCard code={code} uid={uid} state={state} owner={owner} onError={onError} />
+        <CurrentBookCard
+          code={code}
+          uid={uid}
+          state={state}
+          catalog={catalog}
+          owner={owner}
+          onError={onError}
+        />
         <RoundStatus
           code={code}
           uid={uid}
           displayName={displayName}
-          state={state}
+          state={catalog}
           owner={owner}
           onError={onError}
         />

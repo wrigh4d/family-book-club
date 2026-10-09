@@ -1,4 +1,4 @@
-import type { ClubState, HistoryBook, Nomination } from '../types'
+import type { ClubState, CurrentBook, HistoryBook, Nomination } from '../types'
 
 export type ClubBookStatus = 'current' | 'history' | 'shortlist' | null
 
@@ -23,15 +23,48 @@ export function findMatchingClubBook<T extends BookRef>(
   return catalog.find((row) => isSameClubBook(book, row))
 }
 
-function currentRef(state: ClubState): BookRef | null {
+export function isOwner(state: ClubState, uid: string): boolean {
+  return (
+    state.club.createdBy === uid ||
+    state.members.some((member) => member.id === uid && member.role === 'owner')
+  )
+}
+
+export function resolveCurrentBook(state: ClubState): CurrentBook | null {
   if (state.club.currentBook) return state.club.currentBook
   const id = state.club.currentBookId ?? state.round?.selectedNominationId
   const nom = state.nominations.find((row) => row.id === id)
-  return nom ?? null
+  if (!nom) return null
+  return {
+    olid: nom.olid,
+    title: nom.title,
+    author: nom.author,
+    coverUrl: nom.coverUrl,
+    genre: nom.genre,
+    firstPublishYear: nom.firstPublishYear,
+    pageCount: nom.pageCount,
+  }
+}
+
+export function currentHistoryId(state: ClubState): string | null {
+  const book = resolveCurrentBook(state)
+  if (!book?.olid) return null
+  return historyDocId(book.olid)
+}
+
+export function currentHistoryBook(state: ClubState): HistoryBook | null {
+  const historyId = currentHistoryId(state)
+  if (!historyId) return null
+  return state.history.find((row) => row.id === historyId) ?? null
+}
+
+/** Status and meeting counts use the finished catalog. The live snapshot stays the current book's row. */
+export function withFinishedCatalog(state: ClubState, catalog: HistoryBook[]): ClubState {
+  return { ...state, history: catalog }
 }
 
 export function clubBookStatus(state: ClubState, book: BookRef): ClubBookStatus {
-  const current = currentRef(state)
+  const current = resolveCurrentBook(state)
   if (current && isSameClubBook(book, current)) return 'current'
   if (findMatchingClubBook(book, state.history)) return 'history'
   if (findMatchingClubBook(book, state.nominations)) return 'shortlist'
@@ -70,13 +103,13 @@ export function historyDocId(olid: string): string {
 }
 
 export function unfinishedHistoryForCurrent(state: ClubState): HistoryBook[] {
-  const current = currentRef(state)
+  const current = resolveCurrentBook(state)
   if (!current) return []
   return state.history.filter((row) => isSameClubBook(row, current))
 }
 
 export function pastHistoryBooks(state: ClubState): HistoryBook[] {
-  const current = currentRef(state)
+  const current = resolveCurrentBook(state)
   return state.history.filter((row) => !current || !isSameClubBook(row, current))
 }
 

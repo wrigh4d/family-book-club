@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { chatPageUrl, notificationBody, NOTIFICATION_BODY_MAX } from '../../functions/src/text.ts'
+import {
+  chatNotificationFromData,
+  chatPageUrl,
+  notificationBody,
+  NOTIFICATION_BODY_MAX,
+} from '../../functions/src/text.ts'
 import {
   asChatMessage,
   CHAT_TEXT_MAX,
@@ -39,6 +44,30 @@ describe('formatChatTime', () => {
   it('shows the date and time on another day', () => {
     const yesterday = new Date(2026, 8, 29, 15, 42).getTime()
     expect(formatChatTime(yesterday, now, 'en-US')).toBe('Sep 29, 3:42 PM')
+  })
+})
+
+describe('chatNotificationFromData', () => {
+  it('skips empty text', () => {
+    expect(
+      chatNotificationFromData({ authorId: 'u1', authorName: 'Dad', text: '   ' }),
+    ).toBeNull()
+  })
+
+  it('uses Someone when the author name is blank', () => {
+    expect(
+      chatNotificationFromData({ authorId: 'u1', authorName: '  ', text: 'Hello' }),
+    ).toEqual({ authorId: 'u1', authorName: 'Someone', text: 'Hello' })
+  })
+
+  it('keeps the author and message for the notification sentence', () => {
+    const parsed = chatNotificationFromData({
+      authorId: 'u1',
+      authorName: 'Dad',
+      text: ' Has anyone started? ',
+    })
+    expect(parsed).toEqual({ authorId: 'u1', authorName: 'Dad', text: 'Has anyone started?' })
+    expect(notificationBody(parsed!.authorName, parsed!.text)).toBe('Dad: Has anyone started?')
   })
 })
 

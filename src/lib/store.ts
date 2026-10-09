@@ -37,8 +37,12 @@ import {
 import {
   assertCanBeNextBook,
   assertCanJoinShortlist,
+  currentHistoryBook,
+  currentHistoryId,
   findMatchingClubBook,
   historyDocId,
+  isOwner,
+  resolveCurrentBook,
   staleShortlist,
   unfinishedHistoryForCurrent,
 } from './bookStatus'
@@ -55,6 +59,7 @@ import {
 import { randomClubCode } from './codes'
 import { firebaseErrorCode } from './errors'
 import { db } from './firebase'
+import { commitReaction, finishHistoryFields, reactionFields, subjectList } from './historyWrite'
 import { fetchWorkSubjects, isSameRecommendedBook } from './openLibrary'
 import { computeMeetingRecs } from './recs'
 import { scoreNominations } from './suggestion'
@@ -84,43 +89,10 @@ function dataOf(snap: { data: () => unknown }): Record<string, unknown> {
   return (snap.data() ?? {}) as Record<string, unknown>
 }
 
-export function isOwner(state: ClubState, uid: string): boolean {
-  return (
-    state.club.createdBy === uid ||
-    state.members.some((member) => member.id === uid && member.role === 'owner')
-  )
-}
+export { currentHistoryBook, currentHistoryId, isOwner, resolveCurrentBook }
 
 function assertOwner(state: ClubState, uid: string): void {
   if (!isOwner(state, uid)) throw new Error('Only the club owner can do that.')
-}
-
-export function resolveCurrentBook(state: ClubState): CurrentBook | null {
-  if (state.club.currentBook) return state.club.currentBook
-  const id = state.club.currentBookId ?? state.round?.selectedNominationId
-  const nom = state.nominations.find((row) => row.id === id)
-  if (!nom) return null
-  return {
-    olid: nom.olid,
-    title: nom.title,
-    author: nom.author,
-    coverUrl: nom.coverUrl,
-    genre: nom.genre,
-    firstPublishYear: nom.firstPublishYear,
-    pageCount: nom.pageCount,
-  }
-}
-
-export function currentHistoryId(state: ClubState): string | null {
-  const book = resolveCurrentBook(state)
-  if (!book?.olid) return null
-  return historyDocId(book.olid)
-}
-
-export function currentHistoryBook(state: ClubState): HistoryBook | null {
-  const historyId = currentHistoryId(state)
-  if (!historyId) return null
-  return state.history.find((row) => row.id === historyId) ?? null
 }
 
 export async function saveProfile(uid: string, displayName: string): Promise<void> {
@@ -202,19 +174,6 @@ async function collectDiscoveredClubCodes(uid: string): Promise<{ codes: string[
   try {
     const mine = await getDocs(query(collectionGroup(db, 'members'), where('uid', '==', uid)))
     for (const row of mine.docs) {
-      const code = clubIdFromMemberPath(row.ref.path)
-      if (code) found.add(code)
-    }
-  } catch (err) {
-    miss(err)
-  }
-
-  try {
-    const members = await getDocs(
-      query(collectionGroup(db, 'members'), where('role', 'in', ['owner', 'member'])),
-    )
-    for (const row of members.docs) {
-      if (row.id !== uid) continue
       const code = clubIdFromMemberPath(row.ref.path)
       if (code) found.add(code)
     }
@@ -885,6 +844,16 @@ export async function pickNextBook(
   }
 
   const batch = writeBatch(db)
+  const outgoing = resolveCurrentBook(full)
+  const outgoingId = currentHistoryId(full)
+  if (outgoing && outgoingId) {
+    const existing = full.history.find((row) => row.id === outgoingId) ?? null
+    batch.set(
+      doc(clubRef(code), 'history', outgoingId),
+      finishHistoryFields(outgoing, existing, full.round.id, Date.now()),
+      { merge: true },
+    )
+  }
   if (book) {
     const listed = findMatchingClubBook(book, full.nominations)
     if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
@@ -904,19 +873,6 @@ export async function pickNextBook(
     dislikedRecs,
   })
   await batch.commit()
-}
-
-export function personalNotes(
-  state: ClubState,
-): Array<{ uid: string; name: string; text: string }> {
-  const notes = currentHistoryBook(state)?.notes ?? {}
-  return state.members
-    .map((member) => ({
-      uid: member.id,
-      name: member.displayName,
-      text: (notes[member.id] ?? '').trim(),
-    }))
-    .filter((row) => row.text.length > 0)
 }
 
 function isNotFound(error: unknown): boolean {
@@ -939,55 +895,64 @@ async function upsertCurrentHistory(
   if (!book || !historyId || !state.round) throw new Error('No current book.')
   const roundId = state.round.id
   const historyRef = doc(clubRef(code), 'history', historyId)
-  const existing = state.history.find((row) => row.id === historyId)
-  const olid = book.olid ?? existing?.olid ?? ''
-  let subjects = existing?.subjects ?? []
-  if (olid && subjects.length === 0) {
-    subjects = await fetchWorkSubjects(olid)
-    if (subjects.length === 0) subjects = [book.genre]
-  }
-  const base = {
+  const existing = state.history.find((row) => row.id === historyId) ?? null
+  const fields = reactionFields(
+    { ...book, genre: asGenre(book.genre) },
     roundId,
-    olid,
-    title: book.title,
-    author: book.author,
-    coverUrl: book.coverUrl,
-    genre: asGenre(book.genre),
-  }
-  if (existing) {
-    const fields: Record<string, unknown> = { ...base }
-    if (patch.stars != null) fields[`ratings.${uid}`] = patch.stars
-    if (patch.note != null) fields[`notes.${uid}`] = patch.note
-    if ((existing.subjects ?? []).length === 0 && subjects.length > 0) {
-      fields.subjects = subjects
-    }
-    try {
-      await updateDoc(historyRef, fields)
-      return
-    } catch (err) {
-      if (!isNotFound(err)) throw err
-    }
-  }
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(historyRef)
-    const row = snap.exists() ? snap.data() : {}
-    const ratings =
-      row.ratings && typeof row.ratings === 'object'
-        ? { ...(row.ratings as Record<string, number>) }
-        : {}
-    const notes =
-      row.notes && typeof row.notes === 'object' ? { ...(row.notes as Record<string, string>) } : {}
-    if (patch.stars != null) ratings[uid] = patch.stars
-    if (patch.note != null) notes[uid] = patch.note
-    const existingSubjects = Array.isArray(row.subjects) ? row.subjects.map(String) : []
-    tx.set(historyRef, {
-      ...base,
-      finishedAt: row.finishedAt ?? Date.now(),
-      ratings,
-      notes,
-      subjects: existingSubjects.length > 0 ? existingSubjects : subjects,
-    })
-  })
+    uid,
+    patch,
+  )
+  await commitReaction(
+    {
+      write: async () => {
+        if (existing) {
+          try {
+            await updateDoc(historyRef, fields)
+            return
+          } catch (err) {
+            if (!isNotFound(err)) throw err
+          }
+        }
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(historyRef)
+          const row = snap.exists() ? snap.data() : {}
+          const ratings =
+            row.ratings && typeof row.ratings === 'object'
+              ? { ...(row.ratings as Record<string, number>) }
+              : {}
+          const notes =
+            row.notes && typeof row.notes === 'object'
+              ? { ...(row.notes as Record<string, string>) }
+              : {}
+          if (patch.stars != null) ratings[uid] = patch.stars
+          if (patch.note != null) notes[uid] = patch.note
+          const existingSubjects = Array.isArray(row.subjects) ? row.subjects.map(String) : []
+          const priorFinish =
+            typeof row.finishedAt === 'number' && row.finishedAt > 0 ? row.finishedAt : undefined
+          tx.set(historyRef, {
+            roundId,
+            olid: book.olid,
+            title: book.title,
+            author: book.author,
+            coverUrl: book.coverUrl,
+            genre: asGenre(book.genre),
+            ...(priorFinish != null ? { finishedAt: priorFinish } : {}),
+            ratings,
+            notes,
+            subjects: existingSubjects,
+          })
+        })
+      },
+      lookupSubjects: () => fetchWorkSubjects(book.olid),
+      storeSubjects: async (subjects) => {
+        await updateDoc(historyRef, { subjects: subjectList(subjects, asGenre(book.genre)) }).catch(
+          () => undefined,
+        )
+      },
+    },
+    existing?.subjects,
+    book.olid,
+  )
 }
 
 export async function rateCurrentBook(

@@ -1,5 +1,5 @@
 rules_version = '2';
-// family-book-club rules v8
+// family-book-club rules v9
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -36,11 +36,11 @@ service cloud.firestore {
       }
     }
 
-    // Collection-group queries need this recursive match. Signed-in users can
-    // find member rows (and therefore club codes) across clubs; the client
-    // keeps only request.auth.uid. Public listing of /clubs is still forbidden.
+    // Collection-group queries need this recursive match. A member may read
+    // only their own member rows (where uid is their Google id). Club rosters
+    // are allowed separately, below, for people already in that club.
     match /{path=**}/members/{userId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /clubs/{clubId} {
@@ -80,7 +80,7 @@ service cloud.firestore {
       allow delete: if false;
 
       match /members/{userId} {
-        allow read: if signedIn();
+        allow read: if isMember() || isSelf(userId);
         allow create: if isSelf(userId)
           && (
             request.resource.data.role == 'member'

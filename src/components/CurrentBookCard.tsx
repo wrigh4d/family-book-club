@@ -17,15 +17,18 @@ export function CurrentBookCard({
   code,
   uid,
   state,
+  catalog,
   owner,
   onError,
 }: {
   code: string
   uid: string
   state: ClubState
+  catalog?: ClubState
   owner?: boolean
   onError: (err: unknown) => void
 }) {
+  const statusState = catalog ?? state
   const current = resolveCurrentBook(state)
   const history = currentHistoryBook(state)
   const myRating = history?.ratings[uid]
@@ -80,7 +83,7 @@ export function CurrentBookCard({
       </div>
       {changing ? (
         <ChangeCurrentPicker
-          state={state}
+          state={statusState}
           busy={busy}
           onPick={(book) => void replaceWith(book)}
           onCancel={() => setChangeForId(null)}

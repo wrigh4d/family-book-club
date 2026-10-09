@@ -3,7 +3,7 @@ import { getFirestore, type DocumentReference } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
 import { logger } from 'firebase-functions'
 import { onDocumentCreated } from 'firebase-functions/v2/firestore'
-import { chatPageUrl, iconUrl, notificationBody } from './text'
+import { chatNotificationFromData, chatPageUrl, iconUrl, notificationBody } from './text'
 
 initializeApp()
 
@@ -24,12 +24,9 @@ export const notifyChatMessage = onDocumentCreated(
   async (event) => {
     const snap = event.data
     if (!snap) return
-    const data = snap.data()
-    const authorId = typeof data.authorId === 'string' ? data.authorId : ''
-    const authorName =
-      typeof data.authorName === 'string' && data.authorName.trim() ? data.authorName.trim() : 'Someone'
-    const text = typeof data.text === 'string' ? data.text.trim() : ''
-    if (!authorId || !text) return
+    const parsed = chatNotificationFromData(snap.data())
+    if (!parsed) return
+    const { authorId, authorName, text } = parsed
 
     const clubId = event.params.clubId
     const db = getFirestore()

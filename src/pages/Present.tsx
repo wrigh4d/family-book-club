@@ -18,6 +18,7 @@ import { currentHistoryBook, isOwner, resolveCurrentBook, startConcluding } from
 import { topWantedGenre } from '../lib/suggestion'
 import { useBookFacts } from '../lib/useBookFacts'
 import { useClub } from '../lib/useClub'
+import { useFinishedCatalog } from '../lib/useClubHistory'
 import type {
   AppRecommendation,
   ClubState,
@@ -131,6 +132,7 @@ function useStageLayout(): boolean {
 
 export function Present() {
   const { code, uid, displayName, state, error, setError } = useClub()
+  const catalog = useFinishedCatalog(code, state)
   const navigate = useNavigate()
   const stage = useStageLayout()
   const current = state ? resolveCurrentBook(state) : null
@@ -139,11 +141,11 @@ export function Present() {
   const voice = useMemo(() => (state ? clubVoice(state) : { comments: [], ratings: [] }), [state])
   const recs = useMemo(() => (state ? recSlidesFromState(state) : []), [state])
 
-  if (!uid || !displayName || !state) return null
+  if (!uid || !displayName || !state || !catalog) return null
   if (!current) return <Navigate to={`/club/${code}`} replace />
 
-  const shortlist = availableShortlist(state)
-  const past = pastHistoryBooks(state)
+  const shortlist = availableShortlist(catalog)
+  const past = pastHistoryBooks(catalog)
   const lean = topWantedGenre(state.genreVotes)
   const previous = lastMeeting(past)
   const roomScore = groupRating(Object.fromEntries(voice.ratings.map((row) => [row.id, row.stars])))

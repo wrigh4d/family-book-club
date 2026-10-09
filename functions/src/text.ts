@@ -3,6 +3,17 @@
 
 export const NOTIFICATION_BODY_MAX = 140
 
+export function chatNotificationFromData(
+  data: Record<string, unknown> | undefined,
+): { authorId: string; authorName: string; text: string } | null {
+  if (!data) return null
+  const authorId = typeof data.authorId === 'string' ? data.authorId : ''
+  const text = typeof data.text === 'string' ? data.text.trim() : ''
+  if (!authorId || !text) return null
+  const rawName = typeof data.authorName === 'string' ? data.authorName.trim() : ''
+  return { authorId, authorName: rawName || 'Someone', text }
+}
+
 export function notificationBody(authorName: string, text: string): string {
   const body = `${authorName}: ${text}`
   if (body.length <= NOTIFICATION_BODY_MAX) return body

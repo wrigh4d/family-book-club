@@ -12,29 +12,32 @@ import {
   toggleAlreadyRead,
 } from '../lib/store'
 import { useClub } from '../lib/useClub'
+import { useFinishedCatalog } from '../lib/useClubHistory'
 
 export function ShortlistPage() {
   const { code, uid, displayName, state, error, setError } = useClub()
+  const catalog = useFinishedCatalog(code, state)
+  const viewed = catalog ?? state
 
-  const staleKey = state
-    ? staleShortlist(state)
+  const staleKey = viewed
+    ? staleShortlist(viewed)
         .map((book) => book.id)
         .sort()
         .join(',')
     : ''
 
   useEffect(() => {
-    if (!state || !staleKey) return
-    pruneShortlist(code, state).catch(() => undefined)
-  }, [code, staleKey, state])
+    if (!viewed || !staleKey) return
+    pruneShortlist(code, viewed).catch(() => undefined)
+  }, [code, staleKey, viewed])
 
-  if (!uid || !displayName || !state) return null
+  if (!uid || !displayName || !viewed) return null
 
-  if (!resolveCurrentBook(state)) {
+  if (!resolveCurrentBook(viewed)) {
     return <Navigate to={`/club/${code}`} replace />
   }
 
-  const listed = availableShortlist(state)
+  const listed = availableShortlist(viewed)
 
   return (
     <>
@@ -43,10 +46,10 @@ export function ShortlistPage() {
         <Card className="flex flex-col gap-4">
           <CardTitle>Add a book</CardTitle>
           <Nominate
-            state={state}
+            state={viewed}
             onAdd={async (hit) => {
               try {
-                await addNomination(code, uid, displayName, hit, state)
+                await addNomination(code, uid, displayName, hit, viewed)
               } catch (err) {
                 setError(friendlyFirebaseError(err))
               }

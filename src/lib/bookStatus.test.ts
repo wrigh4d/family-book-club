@@ -3,10 +3,14 @@ import {
   availableShortlist,
   clubBookStatus,
   clubBookStatusLabel,
+  currentHistoryBook,
   groupRatingLabel,
   historyDocId,
+  isOwner,
   pastHistoryBooks,
+  resolveCurrentBook,
   unfinishedHistoryForCurrent,
+  withFinishedCatalog,
 } from './bookStatus'
 import type { ClubState, Nomination } from '../types'
 
@@ -172,6 +176,81 @@ describe('pastHistoryBooks', () => {
       ],
     })
     expect(pastHistoryBooks(club).map((row) => row.title)).toEqual(['Emma'])
+  })
+})
+
+describe('current book decision', () => {
+  it('uses the stored current book', () => {
+    const club = state({ current: { olid: '/works/OL1', title: 'Dune' } })
+    expect(resolveCurrentBook(club)?.title).toBe('Dune')
+  })
+
+  it('falls back to the shortlist row the club selected', () => {
+    const club = state({
+      nominations: [nomination({ id: 'n9', olid: '/works/OL9', title: 'Kindred' })],
+    })
+    club.club.currentBook = null
+    club.club.currentBookId = 'n9'
+    expect(resolveCurrentBook(club)).toMatchObject({
+      olid: '/works/OL9',
+      title: 'Kindred',
+      author: 'Author',
+    })
+    expect(currentHistoryBook(club)).toBeNull()
+  })
+
+  it('reads the live rating from the current history row only', () => {
+    const club = state({ current: { olid: '/works/OL1', title: 'Dune' } })
+    const id = historyDocId('/works/OL1')
+    club.history = [
+      {
+        id,
+        roundId: 'r1',
+        olid: '/works/OL1',
+        title: 'Dune',
+        author: 'A',
+        coverUrl: null,
+        genre: 'Literary',
+        finishedAt: 0,
+        ratings: { u1: 4 },
+      },
+    ]
+    expect(currentHistoryBook(club)?.ratings).toEqual({ u1: 4 })
+  })
+
+  it('treats the creator and an owner member as the owner', () => {
+    const club = state({ current: { olid: '/works/OL1', title: 'Dune' } })
+    expect(isOwner(club, 'u1')).toBe(true)
+    club.members = [
+      { id: 'u2', displayName: 'Ada', role: 'owner', joinedAt: 1 },
+      { id: 'u3', displayName: 'Bea', role: 'member', joinedAt: 2 },
+    ]
+    club.club.createdBy = 'someone-else'
+    expect(isOwner(club, 'u2')).toBe(true)
+    expect(isOwner(club, 'u3')).toBe(false)
+  })
+})
+
+describe('withFinishedCatalog', () => {
+  it('shows finished books the live snapshot does not hold', () => {
+    const live = state({
+      current: { olid: '/works/OL1', title: 'Dune' },
+      history: [{ olid: '/works/OL1', title: 'Dune' }],
+    })
+    live.history[0].id = historyDocId('/works/OL1')
+    live.history[0].ratings = { u1: 5 }
+    const catalog = state({
+      current: { olid: '/works/OL1', title: 'Dune' },
+      history: [
+        { olid: '/works/OL1', title: 'Dune' },
+        { olid: '/works/OL2', title: 'Emma' },
+      ],
+    }).history
+    const viewed = withFinishedCatalog(live, catalog)
+    expect(pastHistoryBooks(live).map((row) => row.title)).toEqual([])
+    expect(pastHistoryBooks(viewed).map((row) => row.title)).toEqual(['Emma'])
+    expect(clubBookStatus(viewed, { olid: '/works/OL2', title: 'Emma' })).toBe('history')
+    expect(currentHistoryBook(live)?.ratings).toEqual({ u1: 5 })
   })
 })
 
