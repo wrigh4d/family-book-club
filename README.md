@@ -56,7 +56,10 @@ Rules require a Google-signed-in user. Club writes require membership. Round cre
 Club codes are document IDs. Anyone who knows a code can join; the rules forbid listing `/clubs`. Owner is `createdBy`
 or `members/{uid}.role == 'owner'`. Members cannot change their own role.
 
-Do not commit `serviceAccountKey.json` or the Admin SDK. The web `apiKey` / `projectId` config is enough.
+Do not commit `serviceAccountKey.json`, the Admin SDK, or `.env.local`. Copy `.env.example` to
+`.env.local` and fill in the Firebase web settings. GitHub Actions reads those same values from repository
+secrets when it builds the site. The web API key still ships inside the built JavaScript. Firestore rules protect
+the data.
 
 Chat messages live at `clubs/{code}/messages`. Only a member can read or create them. The write must use that member’s
 Google user id and the display name stored on their member document, plus a timestamp within 10 minutes of Firebase’s

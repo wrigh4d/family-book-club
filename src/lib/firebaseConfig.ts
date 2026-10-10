@@ -1,10 +1,18 @@
-// Public web config. Do not add a service-account JSON here — that is a secret.
+function publicSetting(name: string): string {
+  const value = import.meta.env[name]
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  if (import.meta.env.MODE === 'test') return 'test'
+  throw new Error(
+    `Missing ${name}. Copy .env.example to .env.local and fill in the Firebase web config.`,
+  )
+}
+
+/** Firebase web settings from the environment. Never put a service-account JSON here. */
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyD1HUWYhCAV15jwR_yjFVYjthIWW8MTegw',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'familybookclub-52781.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'familybookclub-52781',
-  storageBucket:
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'familybookclub-52781.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '516556111977',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:516556111977:web:3c57b65023801a51c422f8',
+  apiKey: publicSetting('VITE_FIREBASE_API_KEY'),
+  authDomain: publicSetting('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: publicSetting('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: publicSetting('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: publicSetting('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: publicSetting('VITE_FIREBASE_APP_ID'),
 }
