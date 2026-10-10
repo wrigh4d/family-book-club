@@ -63,6 +63,19 @@ export function withFinishedCatalog(state: ClubState, catalog: HistoryBook[]): C
   return { ...state, history: catalog }
 }
 
+/**
+ * Meeting, shortlist, and conclude use this list.
+ * Until it loads, and if the listen fails, there is no finished catalog.
+ * The one-row live snapshot must not mark a past book as choosable.
+ */
+export function selectFinishedCatalog(
+  live: ClubState | null,
+  source: { books: HistoryBook[]; ready: boolean; error: string | null },
+): ClubState | null {
+  if (!live || !source.ready || source.error) return null
+  return withFinishedCatalog(live, source.books)
+}
+
 export function clubBookStatus(state: ClubState, book: BookRef): ClubBookStatus {
   const current = resolveCurrentBook(state)
   if (current && isSameClubBook(book, current)) return 'current'

@@ -33,10 +33,10 @@ import { type ClubState, recToCurrentBook } from '../types'
 
 export function ClubHome() {
   const { code, uid, displayName, state, error, setError } = useClub()
-  const catalog = useFinishedCatalog(code, state)
+  const { catalog, error: historyError } = useFinishedCatalog(code, state)
   const navigate = useNavigate()
 
-  if (!uid || !displayName || !state || !catalog) return null
+  if (!uid || !displayName || !state) return null
 
   const current = resolveCurrentBook(state)
   const owner = isOwner(state, uid)
@@ -72,22 +72,40 @@ export function ClubHome() {
       />
     ) : null
 
-  let body = (
-    <RoundStatus
+  const bookCard = (
+    <CurrentBookCard
       code={code}
       uid={uid}
-      displayName={displayName}
-      state={catalog}
+      state={state}
+      catalog={catalog ?? undefined}
+      catalogError={historyError}
       owner={owner}
       onError={onError}
     />
   )
+  let body =
+    status === 'concluding' && !catalog ? (
+      <FinishedBooksPending title="Picking the next book" failed={Boolean(historyError)} />
+    ) : (
+      <RoundStatus
+        code={code}
+        uid={uid}
+        displayName={displayName}
+        state={status === 'concluding' && catalog ? catalog : state}
+        owner={owner}
+        onError={onError}
+      />
+    )
   if (!current) {
     body = owner ? (
-      <FirstBookSetup
-        statusFor={(book) => clubBookStatusLabel(clubBookStatus(catalog, book))}
-        onPick={(book) => setStartingBook(code, state, uid, book).catch(onError)}
-      />
+      catalog ? (
+        <FirstBookSetup
+          statusFor={(book) => clubBookStatusLabel(clubBookStatus(catalog, book))}
+          onPick={(book) => setStartingBook(code, state, uid, book).catch(onError)}
+        />
+      ) : (
+        <FinishedBooksPending title="Choosing the first book" failed={Boolean(historyError)} />
+      )
     ) : (
       <Card className="flex flex-col gap-3">
         <CardTitle>Waiting on the first book</CardTitle>
@@ -99,14 +117,7 @@ export function ClubHome() {
   } else if (status === 'collecting') {
     body = (
       <>
-        <CurrentBookCard
-          code={code}
-          uid={uid}
-          state={state}
-          catalog={catalog}
-          owner={owner}
-          onError={onError}
-        />
+        {bookCard}
         {genres}
         {owner ? (
           <Button
@@ -126,19 +137,12 @@ export function ClubHome() {
   } else if (status === 'presenting') {
     body = (
       <>
-        <CurrentBookCard
-          code={code}
-          uid={uid}
-          state={state}
-          catalog={catalog}
-          owner={owner}
-          onError={onError}
-        />
+        {bookCard}
         <RoundStatus
           code={code}
           uid={uid}
           displayName={displayName}
-          state={catalog}
+          state={state}
           owner={owner}
           onError={onError}
         />
@@ -148,11 +152,24 @@ export function ClubHome() {
 
   return (
     <div className="flex flex-col gap-6">
-      <ErrorBanner message={error} />
+      <ErrorBanner message={historyError ?? error} />
       {clubInfo}
       {body}
       {!current ? genres : null}
     </div>
+  )
+}
+
+function FinishedBooksPending({ title, failed }: { title: string; failed?: boolean }) {
+  return (
+    <Card className="flex flex-col gap-3">
+      <CardTitle>{title}</CardTitle>
+      <p className="text-sm text-ink/70">
+        {failed
+          ? 'Finished books didn’t load, so a past book can’t be chosen yet.'
+          : 'Still loading the club’s finished books.'}
+      </p>
+    </Card>
   )
 }
 

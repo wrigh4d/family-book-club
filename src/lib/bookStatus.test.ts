@@ -9,6 +9,7 @@ import {
   isOwner,
   pastHistoryBooks,
   resolveCurrentBook,
+  selectFinishedCatalog,
   unfinishedHistoryForCurrent,
   withFinishedCatalog,
 } from './bookStatus'
@@ -228,6 +229,46 @@ describe('current book decision', () => {
     club.club.createdBy = 'someone-else'
     expect(isOwner(club, 'u2')).toBe(true)
     expect(isOwner(club, 'u3')).toBe(false)
+  })
+})
+
+describe('selectFinishedCatalog', () => {
+  function liveClub(): ClubState {
+    return state({
+      current: { olid: '/works/OL1', title: 'Dune' },
+      history: [{ olid: '/works/OL1', title: 'Dune' }],
+      nominations: [nomination({ id: 'n9', olid: '/works/OL2', title: 'Emma' })],
+    })
+  }
+
+  it('does not offer the live row as the finished catalog before the list loads', () => {
+    const live = liveClub()
+    expect(availableShortlist(live).map((book) => book.title)).toEqual(['Emma'])
+    expect(selectFinishedCatalog(live, { books: [], ready: false, error: null })).toBeNull()
+  })
+
+  it('marks a finished book already read once the list has loaded', () => {
+    const live = liveClub()
+    const books = state({
+      history: [
+        { olid: '/works/OL1', title: 'Dune' },
+        { olid: '/works/OL2', title: 'Emma' },
+      ],
+    }).history
+    const viewed = selectFinishedCatalog(live, { books, ready: true, error: null })
+    expect(viewed).not.toBeNull()
+    expect(clubBookStatusLabel(clubBookStatus(viewed!, { olid: '/works/OL2', title: 'Emma' }))).toBe(
+      'Already read',
+    )
+    expect(availableShortlist(viewed!)).toEqual([])
+    expect(pastHistoryBooks(viewed!).map((row) => row.title)).toEqual(['Emma'])
+  })
+
+  it('does not offer the live row when the finished list fails to load', () => {
+    const live = liveClub()
+    expect(
+      selectFinishedCatalog(live, { books: [], ready: true, error: 'Firestore blocked this action.' }),
+    ).toBeNull()
   })
 })
 

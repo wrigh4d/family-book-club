@@ -18,6 +18,7 @@ export function CurrentBookCard({
   uid,
   state,
   catalog,
+  catalogError,
   owner,
   onError,
 }: {
@@ -25,10 +26,10 @@ export function CurrentBookCard({
   uid: string
   state: ClubState
   catalog?: ClubState
+  catalogError?: string | null
   owner?: boolean
   onError: (err: unknown) => void
 }) {
-  const statusState = catalog ?? state
   const current = resolveCurrentBook(state)
   const history = currentHistoryBook(state)
   const myRating = history?.ratings[uid]
@@ -82,12 +83,23 @@ export function CurrentBookCard({
         </div>
       </div>
       {changing ? (
-        <ChangeCurrentPicker
-          state={statusState}
-          busy={busy}
-          onPick={(book) => void replaceWith(book)}
-          onCancel={() => setChangeForId(null)}
-        />
+        catalog ? (
+          <ChangeCurrentPicker
+            state={catalog}
+            busy={busy}
+            onPick={(book) => void replaceWith(book)}
+            onCancel={() => setChangeForId(null)}
+          />
+        ) : (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-ink/70">
+              {catalogError
+                ? 'Finished books didn’t load, so a past book can’t replace this one yet.'
+                : 'Still loading the club’s finished books.'}
+            </p>
+            <TextButton onClick={() => setChangeForId(null)}>Keep this book</TextButton>
+          </div>
+        )
       ) : (
         <>
           <div>

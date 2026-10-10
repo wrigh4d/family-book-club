@@ -132,7 +132,7 @@ function useStageLayout(): boolean {
 
 export function Present() {
   const { code, uid, displayName, state, error, setError } = useClub()
-  const catalog = useFinishedCatalog(code, state)
+  const { catalog, error: historyError } = useFinishedCatalog(code, state)
   const navigate = useNavigate()
   const stage = useStageLayout()
   const current = state ? resolveCurrentBook(state) : null
@@ -141,11 +141,11 @@ export function Present() {
   const voice = useMemo(() => (state ? clubVoice(state) : { comments: [], ratings: [] }), [state])
   const recs = useMemo(() => (state ? recSlidesFromState(state) : []), [state])
 
-  if (!uid || !displayName || !state || !catalog) return null
+  if (!uid || !displayName || !state) return null
   if (!current) return <Navigate to={`/club/${code}`} replace />
 
-  const shortlist = availableShortlist(catalog)
-  const past = pastHistoryBooks(catalog)
+  const shortlist = catalog ? availableShortlist(catalog) : []
+  const past = catalog ? pastHistoryBooks(catalog) : []
   const lean = topWantedGenre(state.genreVotes)
   const previous = lastMeeting(past)
   const roomScore = groupRating(Object.fromEntries(voice.ratings.map((row) => [row.id, row.stars])))
@@ -204,12 +204,12 @@ export function Present() {
           ) : null}
         </div>
       </header>
-      {error ? (
+      {error || historyError ? (
         <p
           role="alert"
           className="mx-4 mt-3 shrink-0 rounded-xl border border-gold/40 bg-burgundy px-3 py-2 text-sm text-cream sm:mx-6"
         >
-          {error}
+          {error ?? historyError}
         </p>
       ) : null}
 
