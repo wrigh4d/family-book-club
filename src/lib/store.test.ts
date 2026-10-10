@@ -3,6 +3,7 @@ import {
   clubIdFromMemberPath,
   currentRoundHasVotes,
   memberWriteNeeded,
+  nextGenreSeed,
   needsClubIndex,
 } from './store'
 
@@ -50,5 +51,63 @@ describe('currentRoundHasVotes', () => {
     expect(currentRoundHasVotes({})).toBe(false)
     expect(currentRoundHasVotes({ u1: [] })).toBe(false)
     expect(currentRoundHasVotes({ u1: [], u2: ['Fantasy'] })).toBe(true)
+  })
+})
+
+describe('nextGenreSeed', () => {
+  const base = {
+    roundId: 'r2',
+    votes: {} as Record<string, never>,
+    previousRoundId: 'r1' as string | null,
+    waitedRoundId: null as string | null,
+    seededRoundId: null as string | null,
+  }
+
+  it('waits one snapshot before seeding', () => {
+    expect(nextGenreSeed(base)).toEqual({
+      action: 'wait',
+      waitedRoundId: 'r2',
+      seededRoundId: null,
+      previousRoundId: null,
+    })
+    expect(nextGenreSeed({ ...base, waitedRoundId: 'r2' })).toEqual({
+      action: 'seed',
+      waitedRoundId: 'r2',
+      seededRoundId: 'r2',
+      previousRoundId: 'r1',
+    })
+  })
+
+  it('skips a round that already has votes, without marking it seeded', () => {
+    expect(
+      nextGenreSeed({ ...base, votes: { u1: ['Fantasy'] }, waitedRoundId: null }),
+    ).toMatchObject({ action: 'skip', waitedRoundId: 'r2', seededRoundId: null })
+  })
+
+  it('seeds again after every genre is cleared', () => {
+    expect(
+      nextGenreSeed({
+        ...base,
+        votes: {},
+        waitedRoundId: 'r2',
+        seededRoundId: null,
+      }),
+    ).toMatchObject({ action: 'seed', previousRoundId: 'r1' })
+  })
+
+  it('does not retry a round it already seeded', () => {
+    expect(nextGenreSeed({ ...base, waitedRoundId: 'r2', seededRoundId: 'r2' })).toMatchObject({
+      action: 'skip',
+      seededRoundId: 'r2',
+    })
+  })
+
+  it('remembers a round that has no previous round and does not write', () => {
+    expect(nextGenreSeed({ ...base, previousRoundId: null, waitedRoundId: 'r2' })).toEqual({
+      action: 'skip',
+      waitedRoundId: 'r2',
+      seededRoundId: 'r2',
+      previousRoundId: null,
+    })
   })
 })

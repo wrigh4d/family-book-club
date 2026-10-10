@@ -18,20 +18,22 @@ import {
 import {
   assertCanBeNextBook,
   findMatchingClubBook,
+  isSameRecommendedBook,
   unfinishedHistoryForCurrent,
 } from './bookStatus'
 import { db } from './firebase'
-import { fetchWorkSubjects, isSameRecommendedBook } from './openLibrary'
+import { fetchWorkSubjects } from './openLibrary'
 import { computeMeetingRecs } from './recs'
 import { scoreNominations } from './suggestion'
-import { stateWithHistory } from './storeLive'
-import { appendBookComment, migrateBookComments } from './comments'
-import { commitReaction, finishHistoryFields, historySetWithNotesClear, subjectList } from './historyWrite'
 import {
-  assertOwner,
-  currentHistoryId,
-  resolveCurrentBook,
-} from './storeCore'
+  commentHistoryBook,
+  commitReaction,
+  finishHistoryFields,
+  rateHistoryBook,
+  subjectList,
+  type HistoryHeader,
+} from './historyWrite'
+import { assertOwner, currentHistoryId, resolveCurrentBook } from './storeCore'
 import { pruneLoadedShortlist } from './storeActionsShortlist'
 
 function clubRef(code: string) {
@@ -71,13 +73,12 @@ function snapshotFromState(
 export async function startPresenting(code: string, state: ClubState, uid: string): Promise<void> {
   assertOwner(state, uid)
   if (!state.round) throw new Error('No active round.')
-  const full = await stateWithHistory(code, state)
-  const computed = await computeMeetingRecs(full)
+  const computed = await computeMeetingRecs(state)
   const recs = {
     genreRecommendation: computed.genre,
     ratingsRecommendation: computed.ratings,
   }
-  const suggestion = snapshotFromState(full, recs)
+  const suggestion = snapshotFromState(state, recs)
   await updateDoc(doc(clubRef(code), 'rounds', state.round.id), {
     status: 'presenting',
     lockedAt: Date.now(),
@@ -111,10 +112,9 @@ export async function setStartingBook(
   uid: string,
   book: CurrentBook,
 ): Promise<void> {
-  const full = await stateWithHistory(code, state)
-  assertOwner(full, uid)
-  assertCanBeNextBook(full, book)
-  const listed = findMatchingClubBook(book, full.nominations)
+  assertOwner(state, uid)
+  assertCanBeNextBook(state, book)
+  const listed = findMatchingClubBook(book, state.nominations)
   if (listed) await deleteDoc(doc(clubRef(code), 'shortlist', listed.id))
   await updateDoc(clubRef(code), {
     currentBook: toCurrentBook(book),
@@ -128,34 +128,33 @@ export async function changeCurrentBook(
   uid: string,
   book: CurrentBook,
 ): Promise<void> {
-  const full = await stateWithHistory(code, state)
-  assertOwner(full, uid)
-  if (!resolveCurrentBook(full)) throw new Error('No current book.')
-  if (full.round && full.round.status !== 'collecting') {
+  assertOwner(state, uid)
+  if (!resolveCurrentBook(state)) throw new Error('No current book.')
+  if (state.round && state.round.status !== 'collecting') {
     throw new Error('Finish or leave presenting before changing the current book.')
   }
-  assertCanBeNextBook(full, book)
+  assertCanBeNextBook(state, book)
 
   const batch = writeBatch(db)
   const historyIds = new Set<string>()
-  const currentId = currentHistoryId(full)
+  const currentId = currentHistoryId(state)
   if (currentId) historyIds.add(currentId)
-  for (const row of unfinishedHistoryForCurrent(full)) {
+  for (const row of unfinishedHistoryForCurrent(state)) {
     historyIds.add(row.id)
   }
   for (const id of historyIds) {
     batch.delete(doc(clubRef(code), 'history', id))
   }
 
-  const listed = findMatchingClubBook(book, full.nominations)
+  const listed = findMatchingClubBook(book, state.nominations)
   if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
 
   batch.update(clubRef(code), {
     currentBook: toCurrentBook(book),
     currentBookId: book.olid || null,
   })
-  if (full.round?.selectedNominationId) {
-    batch.update(doc(clubRef(code), 'rounds', full.round.id), {
+  if (state.round?.selectedNominationId) {
+    batch.update(doc(clubRef(code), 'rounds', state.round.id), {
       selectedNominationId: deleteField(),
     })
   }
@@ -168,22 +167,21 @@ export async function pickNextBook(
   uid: string,
   book: CurrentBook | null,
 ): Promise<void> {
-  const full = await stateWithHistory(code, state)
-  assertOwner(full, uid)
-  if (!full.round) throw new Error('No active round.')
-  if (book) assertCanBeNextBook(full, book)
-  await pruneLoadedShortlist(code, full)
+  assertOwner(state, uid)
+  if (!state.round) throw new Error('No active round.')
+  if (book) assertCanBeNextBook(state, book)
+  await pruneLoadedShortlist(code, state)
   const shown = [
-    full.round.genreRecommendation,
-    full.round.ratingsRecommendation,
-    full.round.suggestion?.genreRecommendation,
-    full.round.suggestion?.ratingsRecommendation,
+    state.round.genreRecommendation,
+    state.round.ratingsRecommendation,
+    state.round.suggestion?.genreRecommendation,
+    state.round.suggestion?.ratingsRecommendation,
   ].filter((rec): rec is AppRecommendation => Boolean(rec?.olid))
   const ignored = shown.filter((rec) => {
     if (book && isSameRecommendedBook(rec, [book])) return false
-    return !full.nominations.some((item) => isSameRecommendedBook(rec, [item]))
+    return !state.nominations.some((item) => isSameRecommendedBook(rec, [item]))
   })
-  const dislikedRecs = [...full.club.dislikedRecs]
+  const dislikedRecs = [...state.club.dislikedRecs]
   for (const rec of ignored) {
     if (!isSameRecommendedBook(rec, dislikedRecs)) {
       dislikedRecs.push({ olid: rec.olid, title: rec.title })
@@ -191,30 +189,30 @@ export async function pickNextBook(
   }
 
   const batch = writeBatch(db)
-  const outgoing = resolveCurrentBook(full)
-  const outgoingId = currentHistoryId(full)
+  const outgoing = resolveCurrentBook(state)
+  const outgoingId = currentHistoryId(state)
   if (outgoing && outgoingId) {
-    const existing = full.history.find((row) => row.id === outgoingId) ?? null
+    const existing = state.history.find((row) => row.id === outgoingId) ?? null
     batch.set(
       doc(clubRef(code), 'history', outgoingId),
-      finishHistoryFields(outgoing, existing, full.round.id, Date.now()),
+      finishHistoryFields(outgoing, existing, state.round.id, Date.now()),
       { merge: true },
     )
   }
   if (book) {
-    const listed = findMatchingClubBook(book, full.nominations)
+    const listed = findMatchingClubBook(book, state.nominations)
     if (listed) batch.delete(doc(clubRef(code), 'shortlist', listed.id))
   }
   const roundRef = doc(collection(clubRef(code), 'rounds'))
   batch.set(roundRef, { status: 'collecting', startedAt: Date.now() })
-  for (const [userId, genres] of Object.entries(full.genreVotes)) {
+  for (const [userId, genres] of Object.entries(state.genreVotes)) {
     if (genres.length > 0) {
       batch.set(doc(clubRef(code), 'rounds', roundRef.id, 'genreVotes', userId), { genres })
     }
   }
   batch.update(clubRef(code), {
     currentRoundId: roundRef.id,
-    previousRoundId: full.round.id,
+    previousRoundId: state.round.id,
     currentBookId: book?.olid ?? null,
     currentBook: book ? toCurrentBook(book) : null,
     dislikedRecs,
@@ -222,13 +220,24 @@ export async function pickNextBook(
   await batch.commit()
 }
 
-function isNotFound(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    String((error as { code: unknown }).code) === 'not-found'
-  )
+function historyHeader(book: CurrentBook, roundId: string, olid: string): HistoryHeader {
+  return {
+    roundId,
+    olid,
+    title: book.title,
+    author: book.author,
+    coverUrl: book.coverUrl,
+    genre: asGenre(book.genre),
+  }
+}
+
+function commentStamp(): { id: string; at: number } {
+  const at = Date.now()
+  const id =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `c-${at}-${Math.random().toString(36).slice(2, 10)}`
+  return { id, at }
 }
 
 async function upsertCurrentHistory(
@@ -240,22 +249,14 @@ async function upsertCurrentHistory(
   const book = resolveCurrentBook(state)
   const historyId = currentHistoryId(state)
   if (!book || !historyId || !state.round) throw new Error('No current book.')
-  const roundId = state.round.id
   const historyRef = doc(clubRef(code), 'history', historyId)
   const existing = state.history.find((row) => row.id === historyId)
   const olid = book.olid ?? existing?.olid ?? ''
   const knownSubjects = existing?.subjects ?? []
-  const base = {
-    roundId,
-    olid,
-    title: book.title,
-    author: book.author,
-    coverUrl: book.coverUrl,
-    genre: asGenre(book.genre),
-  }
+  const header = historyHeader(book, state.round.id, olid)
   await commitReaction(
     {
-      write: () => writeRating(historyRef, base, uid, stars),
+      write: () => writeRating(historyRef, header, uid, stars),
       lookupSubjects: () => fetchWorkSubjects(olid),
       storeSubjects: (subjects) => storeHistorySubjects(historyRef, subjects, book.genre),
     },
@@ -266,38 +267,14 @@ async function upsertCurrentHistory(
 
 async function writeRating(
   historyRef: DocumentReference,
-  base: Record<string, unknown>,
+  header: HistoryHeader,
   uid: string,
   stars: number,
 ): Promise<void> {
-  try {
-    await updateDoc(historyRef, { ...base, [`ratings.${uid}`]: stars })
-    return
-  } catch (err) {
-    if (!isNotFound(err)) throw err
-  }
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(historyRef)
-    const row = snap.exists() ? snap.data() : {}
-    const ratings =
-      row.ratings && typeof row.ratings === 'object'
-        ? { ...(row.ratings as Record<string, number>) }
-        : {}
-    ratings[uid] = stars
-    const existingSubjects = Array.isArray(row.subjects) ? row.subjects.map(String) : []
-    const comments = migrateBookComments(row)
-    const priorFinish =
-      typeof row.finishedAt === 'number' && row.finishedAt > 0 ? row.finishedAt : undefined
-    const { data, options } = historySetWithNotesClear(
-      {
-        ...base,
-        ...(priorFinish != null ? { finishedAt: priorFinish } : {}),
-        ratings,
-        comments,
-        subjects: existingSubjects,
-      },
-      deleteField(),
-    )
+    const stored = snap.exists() ? (snap.data() as Record<string, unknown>) : null
+    const { data, options } = rateHistoryBook(stored, { header, uid, stars }, deleteField())
     tx.set(historyRef, data, options)
   })
 }
@@ -319,28 +296,17 @@ async function storeHistorySubjects(
 
 async function appendCommentToHistory(
   historyRef: DocumentReference,
-  input: { uid: string; name: string; text: string },
-  createBase?: Record<string, unknown>,
+  input: { uid: string; name: string; text: string; at: number; id: string },
+  header: HistoryHeader,
+  subjects: string[],
 ): Promise<void> {
-  const text = input.text.trim()
-  if (!text) return
+  if (!input.text.trim()) return
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(historyRef)
-    const row = snap.exists() ? snap.data() : {}
-    const comments = appendBookComment(migrateBookComments(row), {
-      uid: input.uid,
-      name: input.name,
-      text,
-    })
-    const basePayload: Record<string, unknown> = { comments }
-    if (!snap.exists()) {
-      if (!createBase) throw new Error('No current book.')
-      Object.assign(basePayload, createBase, {
-        ratings: {},
-      })
-    }
-    const { data, options } = historySetWithNotesClear(basePayload, deleteField())
-    tx.set(historyRef, data, options)
+    const stored = snap.exists() ? (snap.data() as Record<string, unknown>) : null
+    const write = commentHistoryBook(stored, { ...input, header, subjects }, deleteField())
+    if (!write) return
+    tx.set(historyRef, write.data, write.options)
   })
 }
 
@@ -367,21 +333,15 @@ export async function savePersonalNote(
   const historyRef = doc(clubRef(code), 'history', historyId)
   const existing = state.history.find((row) => row.id === historyId)
   const olid = book.olid ?? existing?.olid ?? ''
+  const stamp = commentStamp()
   await commitReaction(
     {
       write: () =>
         appendCommentToHistory(
           historyRef,
-          { uid, name, text: note },
-          {
-            roundId,
-            olid,
-            title: book.title,
-            author: book.author,
-            coverUrl: book.coverUrl,
-            genre: asGenre(book.genre),
-            subjects: existing?.subjects ?? [],
-          },
+          { uid, name, text: note, ...stamp },
+          historyHeader(book, roundId, olid),
+          existing?.subjects ?? [],
         ),
       lookupSubjects: () => fetchWorkSubjects(olid),
       storeSubjects: (subjects) => storeHistorySubjects(historyRef, subjects, book.genre),
@@ -389,18 +349,4 @@ export async function savePersonalNote(
     existing?.subjects,
     olid,
   )
-}
-
-export async function saveHistoryComment(
-  code: string,
-  historyId: string,
-  uid: string,
-  name: string,
-  note: string,
-): Promise<void> {
-  await appendCommentToHistory(doc(clubRef(code), 'history', historyId), {
-    uid,
-    name,
-    text: note,
-  })
 }

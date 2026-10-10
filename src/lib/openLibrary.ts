@@ -1,4 +1,5 @@
 import type { Genre } from '../types'
+import { isSameRecommendedBook } from './bookStatus'
 
 export type BookSearchHit = {
   olid: string
@@ -119,37 +120,6 @@ type SubjectWork = {
 
 type SubjectResponse = {
   works?: SubjectWork[]
-}
-
-function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, ' ')
-    .trim()
-}
-
-function titleTokens(title: string): string[] {
-  const skip = new Set(['with', 'from', 'that', 'this', 'have', 'were', 'their'])
-  return normalizeTitle(title)
-    .split(' ')
-    .filter((word) => word.length > 3 && !skip.has(word))
-}
-
-export function isSameRecommendedBook(
-  hit: { olid: string; title: string },
-  disliked: Array<{ olid: string; title: string }>,
-): boolean {
-  const hitTitle = normalizeTitle(hit.title)
-  const hitTokens = titleTokens(hit.title)
-  return disliked.some((row) => {
-    if (row.olid && hit.olid && row.olid === hit.olid) return true
-    const other = normalizeTitle(row.title)
-    if (other && other === hitTitle) return true
-    const otherTokens = titleTokens(row.title)
-    if (!hitTokens.length || !otherTokens.length) return false
-    const overlap = hitTokens.filter((word) => otherTokens.includes(word)).length
-    return overlap >= Math.min(2, hitTokens.length, otherTokens.length)
-  })
 }
 
 function firstUnused(

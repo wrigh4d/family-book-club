@@ -10,24 +10,14 @@ import {
   updateDoc,
   writeBatch,
 } from 'firebase/firestore'
-import {
-  asGenre,
-  type ClubState,
-  type Genre,
-} from '../types'
-import {
-  assertCanJoinShortlist,
-  findMatchingClubBook,
-  staleShortlist,
-} from './bookStatus'
+import { asGenre, type ClubState, type Genre } from '../types'
+import { assertCanJoinShortlist, findMatchingClubBook, staleShortlist } from './bookStatus'
 import { parseGenreList } from './clubParse'
 import { db } from './firebase'
-import { stateWithHistory } from './storeLive'
 
 function clubRef(code: string) {
   return doc(db, 'clubs', code)
 }
-
 
 export async function addRule(
   code: string,
@@ -88,10 +78,9 @@ export async function addNomination(
   },
   state: ClubState,
 ): Promise<string> {
-  const full = await stateWithHistory(code, state)
-  assertCanJoinShortlist(full, book)
-  await pruneLoadedShortlist(code, full)
-  const listed = findMatchingClubBook(book, full.nominations)
+  assertCanJoinShortlist(state, book)
+  await pruneLoadedShortlist(code, state)
+  const listed = findMatchingClubBook(book, state.nominations)
   if (listed) return listed.id
   const ref = await addDoc(collection(clubRef(code), 'shortlist'), {
     olid: book.olid,
@@ -135,11 +124,60 @@ export async function pruneLoadedShortlist(code: string, state: ClubState): Prom
 }
 
 export async function pruneShortlist(code: string, state: ClubState): Promise<void> {
-  await pruneLoadedShortlist(code, await stateWithHistory(code, state))
+  await pruneLoadedShortlist(code, state)
 }
 
 export function currentRoundHasVotes(votes: Record<string, Genre[]>): boolean {
   return Object.values(votes).some((genres) => genres.length > 0)
+}
+
+export type GenreSeedDecision = {
+  action: 'skip' | 'wait' | 'seed'
+  waitedRoundId: string | null
+  seededRoundId: string | null
+  previousRoundId: string | null
+}
+
+/** Owner effect stores the returned memory, then performs a seed only when asked. */
+export function nextGenreSeed(input: {
+  roundId: string
+  votes: Record<string, Genre[]>
+  previousRoundId: string | null
+  waitedRoundId: string | null
+  seededRoundId: string | null
+}): GenreSeedDecision {
+  if (currentRoundHasVotes(input.votes)) {
+    return {
+      action: 'skip',
+      waitedRoundId: input.roundId,
+      seededRoundId: input.seededRoundId,
+      previousRoundId: null,
+    }
+  }
+  if (input.waitedRoundId !== input.roundId) {
+    return {
+      action: 'wait',
+      waitedRoundId: input.roundId,
+      seededRoundId: input.seededRoundId,
+      previousRoundId: null,
+    }
+  }
+  if (input.seededRoundId === input.roundId) {
+    return {
+      action: 'skip',
+      waitedRoundId: input.waitedRoundId,
+      seededRoundId: input.seededRoundId,
+      previousRoundId: null,
+    }
+  }
+  const previous =
+    input.previousRoundId && input.previousRoundId !== input.roundId ? input.previousRoundId : null
+  return {
+    action: previous ? 'seed' : 'skip',
+    waitedRoundId: input.waitedRoundId,
+    seededRoundId: input.roundId,
+    previousRoundId: previous,
+  }
 }
 
 export async function seedGenreVotesFromPreviousRound(

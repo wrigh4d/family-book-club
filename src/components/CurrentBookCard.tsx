@@ -3,7 +3,7 @@ import {
   availableShortlist,
   clubBookStatus,
   clubBookStatusLabel,
-  groupRatingLabel,
+  roomRatingLabel,
 } from '../lib/bookStatus'
 import {
   changeCurrentBook,
@@ -83,7 +83,9 @@ export function CurrentBookCard({
           <p className="font-display text-2xl leading-tight break-words">{current.title}</p>
           <p className="text-sm text-ink/70">{current.author}</p>
           {facts ? <p className="mt-1 text-sm text-ink/60">{facts}</p> : null}
-          <p className="mt-2 text-sm font-semibold text-burgundy">{groupRatingLabel(ratings)}</p>
+          <p className="mt-2 text-sm font-semibold text-burgundy">
+            {roomRatingLabel(state.members, ratings)}
+          </p>
         </div>
       </div>
       {changing ? (

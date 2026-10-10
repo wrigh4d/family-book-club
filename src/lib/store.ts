@@ -12,6 +12,7 @@ export {
   changeCurrentBook,
   currentRoundHasVotes,
   migrateRoundNominationsToShortlist,
+  nextGenreSeed,
   pickNextBook,
   pruneShortlist,
   rateCurrentBook,
@@ -24,7 +25,7 @@ export {
   startPresenting,
   toggleAlreadyRead,
 } from './storeActions'
-export { loadClubHistory, subscribeClub, subscribeClubHistory } from './storeLive'
+export { subscribeClub } from './storeLive'
 export { createClub, joinClub, loadProfile, memberWriteNeeded } from './storeJoin'
 export {
   clubIdFromMemberPath,

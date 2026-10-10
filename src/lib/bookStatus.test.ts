@@ -7,6 +7,9 @@ import {
   groupRatingLabel,
   historyDocId,
   isOwner,
+  isSameRecommendedBook,
+  roomRating,
+  roomRatingLabel,
   pastHistoryBooks,
   resolveCurrentBook,
   unfinishedHistoryForCurrent,
@@ -235,5 +238,46 @@ describe('groupRatingLabel', () => {
     expect(groupRatingLabel({})).toBe('No ratings yet')
     expect(groupRatingLabel({ a: 5, b: 3 })).toBe('4.0/5 · 2 ratings')
     expect(groupRatingLabel({ a: 4 })).toBe('4.0/5 · 1 rating')
+  })
+})
+
+describe('roomRating', () => {
+  const members = [{ id: 'ada' }, { id: 'ben' }]
+  const ratings = { ada: 5, ben: 1, gone: 1 }
+
+  it('counts people still in the club', () => {
+    expect(roomRating(members, ratings)).toEqual({ average: 3, count: 2 })
+    expect(roomRating([{ id: 'ada' }], ratings)).toEqual({ average: 5, count: 1 })
+    expect(roomRatingLabel([{ id: 'ada' }], ratings)).toBe('5.0/5 · 1 rating')
+  })
+
+  it('keeps every stored star on a past-book average', () => {
+    expect(groupRatingLabel(ratings)).toBe('2.3/5 · 3 ratings')
+  })
+})
+
+describe('isSameRecommendedBook', () => {
+  it('matches the same Open Library work id', () => {
+    expect(
+      isSameRecommendedBook({ olid: '/works/OL1W', title: 'Other title' }, [
+        { olid: '/works/OL1W', title: 'Alice' },
+      ]),
+    ).toBe(true)
+  })
+
+  it('treats Alice in Wonderland variants as the same disliked book', () => {
+    expect(
+      isSameRecommendedBook({ olid: '/works/OL2W', title: "Alice's Adventures in Wonderland" }, [
+        { olid: '/works/OL1W', title: 'Alice in Wonderland' },
+      ]),
+    ).toBe(true)
+  })
+
+  it('does not match unrelated titles', () => {
+    expect(
+      isSameRecommendedBook({ olid: '/works/OL3W', title: 'The Hobbit' }, [
+        { olid: '/works/OL1W', title: 'Alice in Wonderland' },
+      ]),
+    ).toBe(false)
   })
 })

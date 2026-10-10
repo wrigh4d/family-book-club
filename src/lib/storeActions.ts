@@ -3,6 +3,7 @@ export {
   addRule,
   currentRoundHasVotes,
   migrateRoundNominationsToShortlist,
+  nextGenreSeed,
   pruneShortlist,
   removeFromShortlist,
   seedGenreVotesFromPreviousRound,

@@ -1,6 +1,11 @@
 import { useMemo } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { availableShortlist, groupRating, pastHistoryBooks } from '../lib/bookStatus'
+import {
+  availableShortlist,
+  currentHistoryBook,
+  pastHistoryBooks,
+  roomRating,
+} from '../lib/bookStatus'
 import { friendlyFirebaseError } from '../lib/errors'
 import {
   meetingGridClass,
@@ -42,7 +47,7 @@ export function Present() {
   const past = pastHistoryBooks(state)
   const lean = topWantedGenre(state.genreVotes)
   const previous = lastMeeting(past)
-  const roomScore = groupRating(Object.fromEntries(voice.ratings.map((row) => [row.id, row.stars])))
+  const roomScore = roomRating(state.members, currentHistoryBook(state)?.ratings ?? {})
   const ratedIds = new Set(voice.ratings.map((row) => row.id))
   const waiting = state.members.filter((member) => !ratedIds.has(member.id))
   const featured = featuredQuote(voice.comments)
@@ -122,7 +127,10 @@ export function Present() {
         />
         <div className={meetingSideClass(mode)}>
           <div className={meetingVoiceClass(mode)}>
-            <SecondaryCarousel key={secondaryPanels.map((panel) => panel.kind).join('|')} panels={secondaryPanels} />
+            <SecondaryCarousel
+              key={secondaryPanels.map((panel) => panel.kind).join('|')}
+              panels={secondaryPanels}
+            />
           </div>
         </div>
         <ShortlistCarousel books={shortlist} members={state.members} />

@@ -5,10 +5,10 @@ import { useAuth } from './auth'
 import { normalizeClubCode } from './codes'
 import { friendlyFirebaseError } from './errors'
 import {
-  currentRoundHasVotes,
   isOwner,
   joinClub,
   migrateRoundNominationsToShortlist,
+  nextGenreSeed,
   rememberClubMembership,
   seedGenreVotesFromPreviousRound,
   subscribeClub,
@@ -97,21 +97,21 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     } else if (state.nominations.length > 0) {
       seededRoundId.current = state.round.id
     }
-    if (currentRoundHasVotes(state.genreVotes)) {
-      votesWaitedRoundId.current = state.round.id
-      return
-    }
-    if (votesWaitedRoundId.current !== state.round.id) {
-      votesWaitedRoundId.current = state.round.id
-      return
-    }
-    if (votesSeededRoundId.current === state.round.id) return
-    votesSeededRoundId.current = state.round.id
-    if (state.club.previousRoundId) {
-      seedGenreVotesFromPreviousRound(code, state.round.id, state.club.previousRoundId).catch(
-        () => undefined,
-      )
-    }
+    const decision = nextGenreSeed({
+      roundId: state.round.id,
+      votes: state.genreVotes,
+      previousRoundId: state.club.previousRoundId,
+      waitedRoundId: votesWaitedRoundId.current,
+      seededRoundId: votesSeededRoundId.current,
+    })
+    votesWaitedRoundId.current = decision.waitedRoundId
+    votesSeededRoundId.current = decision.seededRoundId
+    if (decision.action !== 'seed' || !decision.previousRoundId) return
+    void seedGenreVotesFromPreviousRound(code, state.round.id, decision.previousRoundId).catch(
+      (err) => {
+        setLocalError(friendlyFirebaseError(err))
+      },
+    )
   }, [code, uid, state])
 
   const value: ClubSession = {

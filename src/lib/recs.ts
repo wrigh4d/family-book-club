@@ -1,4 +1,5 @@
-import { bookMatchingTags, isSameRecommendedBook, popularBookInGenre } from './openLibrary'
+import { isSameRecommendedBook } from './bookStatus'
+import { bookMatchingTags, popularBookInGenre } from './openLibrary'
 import {
   appRecommendationWhy,
   ratingsRecommendationWhy,

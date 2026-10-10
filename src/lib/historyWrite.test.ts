@@ -1,19 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import {
+  commentHistoryBook,
   commitReaction,
   finishHistoryFields,
   historySetWithNotesClear,
-  reactionFields,
+  rateHistoryBook,
   subjectList,
+  type HistoryHeader,
 } from './historyWrite'
 import type { CurrentBook, HistoryBook } from '../types'
 
-const dune: CurrentBook = {
+const clearNotes = Symbol('delete')
+
+const header: HistoryHeader = {
+  roundId: 'r1',
   olid: '/works/OL1',
   title: 'Dune',
   author: 'Frank Herbert',
   coverUrl: null,
   genre: 'Science Fiction',
+}
+
+const dune: CurrentBook = {
+  ...header,
   firstPublishYear: 1965,
   pageCount: 412,
 }
@@ -30,33 +39,89 @@ function finished(finishedAt: number): HistoryBook {
   }
 }
 
-describe('reactionFields', () => {
-  it('records a rating without a finish time', () => {
-    expect(reactionFields(dune, 'r1', 'u1', { stars: 5 })).toEqual({
-      roundId: 'r1',
-      olid: '/works/OL1',
-      title: 'Dune',
-      author: 'Frank Herbert',
-      coverUrl: null,
-      genre: 'Science Fiction',
-      'ratings.u1': 5,
-    })
+describe('rateHistoryBook', () => {
+  it('stores stars, migrates notes, and does not finish the book', () => {
+    const { data, options } = rateHistoryBook(
+      { notes: { u1: 'Halfway' }, ratings: { u2: 3 } },
+      { header, uid: 'u1', stars: 5 },
+      clearNotes,
+    )
+    expect(options).toEqual({ merge: true })
+    expect(data.notes).toBe(clearNotes)
+    expect(data.ratings).toEqual({ u2: 3, u1: 5 })
+    expect(data.comments).toEqual([
+      { id: 'legacy-u1', uid: 'u1', name: 'Reader', text: 'Halfway', at: 0 },
+    ])
+    expect(data).not.toHaveProperty('finishedAt')
+    expect(data.subjects).toEqual([])
   })
 
-  it('records a comment without a finish time', () => {
-    const fields = reactionFields(dune, 'r1', 'u1', { note: 'Halfway' })
-    expect(fields['notes.u1']).toBe('Halfway')
-    expect(fields).not.toHaveProperty('finishedAt')
+  it('keeps a finish time that was already stored', () => {
+    const { data } = rateHistoryBook(
+      { finishedAt: 100, ratings: {}, comments: [] },
+      { header, uid: 'u1', stars: 4 },
+      clearNotes,
+    )
+    expect(data.finishedAt).toBe(100)
+  })
+})
+
+describe('commentHistoryBook', () => {
+  it('appends a comment and clears notes on an existing row', () => {
+    const write = commentHistoryBook(
+      {
+        notes: { u2: 'Old' },
+        ratings: { u1: 5 },
+        comments: [{ id: 'c1', uid: 'u1', name: 'Ada', text: 'Hi', at: 1 }],
+      },
+      { header, uid: 'u2', name: 'Ben', text: 'Also good', at: 20, id: 'c2' },
+      clearNotes,
+    )
+    expect(write?.options).toEqual({ merge: true })
+    expect(write?.data.notes).toBe(clearNotes)
+    expect(write?.data.comments).toEqual([
+      { id: 'c1', uid: 'u1', name: 'Ada', text: 'Hi', at: 1 },
+      { id: 'c2', uid: 'u2', name: 'Ben', text: 'Also good', at: 20 },
+    ])
+    expect(write?.data).not.toHaveProperty('ratings')
+    expect(write?.data).not.toHaveProperty('finishedAt')
+  })
+
+  it('starts a missing row from the book header', () => {
+    const write = commentHistoryBook(
+      null,
+      { header, uid: 'u1', name: 'Ada', text: 'Hello', at: 5, id: 'c1', subjects: ['deserts'] },
+      clearNotes,
+    )
+    expect(write?.data).toMatchObject({
+      title: 'Dune',
+      olid: '/works/OL1',
+      ratings: {},
+      subjects: ['deserts'],
+      comments: [{ id: 'c1', uid: 'u1', name: 'Ada', text: 'Hello', at: 5 }],
+    })
+    expect(write?.data).not.toHaveProperty('finishedAt')
+    expect(write?.data.notes).toBe(clearNotes)
+  })
+
+  it('does not write a blank comment', () => {
+    expect(
+      commentHistoryBook(
+        null,
+        { header, uid: 'u1', name: 'Ada', text: '   ', at: 5, id: 'c1' },
+        clearNotes,
+      ),
+    ).toBeNull()
   })
 })
 
 describe('commitReaction', () => {
   it('records a comment even when subject lookup never returns', async () => {
-    let note: unknown
+    let wrote = false
     await commitReaction(
       {
         write: async () => {
-          note = reactionFields(dune, 'r1', 'u1', { note: 'Halfway' })['notes.u1']
+          wrote = true
         },
         lookupSubjects: () => new Promise(() => undefined),
         storeSubjects: async () => undefined,
@@ -64,7 +129,7 @@ describe('commitReaction', () => {
       [],
       dune.olid,
     )
-    expect(note).toBe('Halfway')
+    expect(wrote).toBe(true)
   })
 
   it('records the rating even when subject lookup never returns', async () => {
@@ -109,6 +174,7 @@ describe('finishHistoryFields', () => {
       finishedAt: 500,
       ratings: {},
       comments: [],
+      subjects: [],
     })
   })
 
@@ -117,6 +183,7 @@ describe('finishHistoryFields', () => {
     expect(fields.finishedAt).toBe(100)
     expect(fields).not.toHaveProperty('ratings')
     expect(fields).not.toHaveProperty('comments')
+    expect(fields).not.toHaveProperty('notes')
   })
 })
 
@@ -129,13 +196,13 @@ describe('subjectList', () => {
 
 describe('historySetWithNotesClear', () => {
   it('always pairs deleteField-style notes clear with merge:true', () => {
-    const clearNotes = { _methodName: 'FieldValue.delete' }
+    const clear = { _methodName: 'FieldValue.delete' }
     const { data, options } = historySetWithNotesClear(
       { comments: [], ratings: { u1: 4 }, title: 'Book' },
-      clearNotes,
+      clear,
     )
     expect(options).toEqual({ merge: true })
-    expect(data.notes).toBe(clearNotes)
+    expect(data.notes).toBe(clear)
     expect(data.comments).toEqual([])
     expect(data.ratings).toEqual({ u1: 4 })
     expect(data.title).toBe('Book')
@@ -143,8 +210,8 @@ describe('historySetWithNotesClear', () => {
 
   it('does not mutate the input payload object', () => {
     const input = { comments: [{ id: 'c1' }] }
-    const clearNotes = Symbol('delete')
-    historySetWithNotesClear(input, clearNotes)
+    const clear = Symbol('delete')
+    historySetWithNotesClear(input, clear)
     expect(input).toEqual({ comments: [{ id: 'c1' }] })
     expect('notes' in input).toBe(false)
   })

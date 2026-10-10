@@ -119,9 +119,62 @@ export function groupRating(
   }
 }
 
-export function groupRatingLabel(ratings: Record<string, number>): string {
-  const group = groupRating(ratings)
+function formatGroupRating(group: { average: number; count: number } | null): string {
   if (!group) return 'No ratings yet'
   const n = group.count
   return `${group.average.toFixed(1)}/5 · ${n} ${n === 1 ? 'rating' : 'ratings'}`
+}
+
+export function groupRatingLabel(ratings: Record<string, number>): string {
+  return formatGroupRating(groupRating(ratings))
+}
+
+/** Average of ratings that belong to people still in the club. */
+export function roomRating(
+  members: { id: string }[],
+  ratings: Record<string, number>,
+): { average: number; count: number } | null {
+  const ids = new Set(members.map((member) => member.id))
+  const counted: Record<string, number> = {}
+  for (const [id, stars] of Object.entries(ratings)) {
+    if (ids.has(id)) counted[id] = stars
+  }
+  return groupRating(counted)
+}
+
+export function roomRatingLabel(
+  members: { id: string }[],
+  ratings: Record<string, number>,
+): string {
+  return formatGroupRating(roomRating(members, ratings))
+}
+
+const TITLE_TOKEN_SKIP = new Set(['with', 'from', 'that', 'this', 'have', 'were', 'their'])
+
+function titleTokens(title: string): string[] {
+  return normalizeTitle(title)
+    .split(' ')
+    .filter((word) => word.length > 3 && !TITLE_TOKEN_SKIP.has(word))
+}
+
+/**
+ * A suggestion matches a book the club already has when the Open Library id matches,
+ * the normalized title matches, or enough title words overlap.
+ * Club catalog checks stay on isSameClubBook, which does not use the word overlap.
+ */
+export function isSameRecommendedBook(
+  hit: { olid: string; title: string },
+  disliked: Array<{ olid: string; title: string }>,
+): boolean {
+  const hitTitle = normalizeTitle(hit.title)
+  const hitTokens = titleTokens(hit.title)
+  return disliked.some((row) => {
+    if (row.olid && hit.olid && row.olid === hit.olid) return true
+    const other = normalizeTitle(row.title)
+    if (other && other === hitTitle) return true
+    const otherTokens = titleTokens(row.title)
+    if (!hitTokens.length || !otherTokens.length) return false
+    const overlap = hitTokens.filter((word) => otherTokens.includes(word)).length
+    return overlap >= Math.min(2, hitTokens.length, otherTokens.length)
+  })
 }

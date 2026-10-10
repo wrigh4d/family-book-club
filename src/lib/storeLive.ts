@@ -1,10 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  type Unsubscribe,
-} from 'firebase/firestore'
+import { collection, doc, onSnapshot, type Unsubscribe } from 'firebase/firestore'
 import {
   type Club,
   type ClubState,
@@ -33,8 +27,6 @@ function clubRef(code: string) {
 function dataOf(snap: { data: () => unknown }): Record<string, unknown> {
   return (snap.data() ?? {}) as Record<string, unknown>
 }
-
-const historyLiveReady = new Set<string>()
 
 export function subscribeClub(
   code: string,
@@ -179,7 +171,6 @@ export function subscribeClub(
           .map((row) => asHistory(row.id, dataOf(row)))
           .sort((a, b) => b.finishedAt - a.finishedAt)
         got.history = true
-        historyLiveReady.add(code)
         emit()
       },
       (err) => onError(err),
@@ -187,39 +178,7 @@ export function subscribeClub(
   )
 
   return () => {
-    historyLiveReady.delete(code)
     for (const stop of unsubscribers) stop()
     for (const stop of roundUnsubs) stop()
   }
-}
-
-export function subscribeClubHistory(
-  code: string,
-  onData: (history: HistoryBook[]) => void,
-  onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    collection(clubRef(code), 'history'),
-    (snap) => {
-      onData(
-        snap.docs
-          .map((row) => asHistory(row.id, dataOf(row)))
-          .sort((a, b) => b.finishedAt - a.finishedAt),
-      )
-    },
-    (err) => onError(err),
-  )
-}
-
-export async function loadClubHistory(code: string): Promise<HistoryBook[]> {
-  const snap = await getDocs(collection(clubRef(code), 'history'))
-  return snap.docs
-    .map((row) => asHistory(row.id, dataOf(row)))
-    .sort((a, b) => b.finishedAt - a.finishedAt)
-}
-
-export async function stateWithHistory(code: string, state: ClubState): Promise<ClubState> {
-  // Live club subscription already carries the full history collection.
-  if (historyLiveReady.has(code)) return state
-  return { ...state, history: await loadClubHistory(code) }
 }
