@@ -6,6 +6,8 @@ import {
   type InstallOs,
 } from '../lib/installGuide'
 import { isStandaloneDisplay } from '../lib/pwa'
+import { isStoreApp } from '../lib/storeApp'
+import { storeChrome } from '../lib/storeChrome'
 import { Button, Chip, TextButton } from './ui'
 
 type BeforeInstallPromptEvent = Event & {
@@ -18,12 +20,13 @@ type BeforeInstallPromptEvent = Event & {
  * Hidden when the app is already running as an installed PWA.
  */
 export function InstallHint() {
+  const showInstallHint = storeChrome(isStoreApp()).showInstallHint
   const [open, setOpen] = useState(false)
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [standalone] = useState(isStandaloneDisplay)
 
   useEffect(() => {
-    if (standalone) return
+    if (!showInstallHint || standalone) return
 
     function onBeforeInstall(event: Event) {
       event.preventDefault()
@@ -32,9 +35,9 @@ export function InstallHint() {
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
-  }, [standalone])
+  }, [showInstallHint, standalone])
 
-  if (standalone) return null
+  if (!showInstallHint || standalone) return null
 
   return (
     <>
@@ -44,7 +47,9 @@ export function InstallHint() {
       >
         <div className="min-w-0">
           <p className="text-sm font-semibold text-ink">Use it like an app</p>
-          <p className="mt-0.5 text-sm text-ink/70">Add to your home screen for a full-screen feel.</p>
+          <p className="mt-0.5 text-sm text-ink/70">
+            Add to your home screen for a full-screen feel.
+          </p>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)}>
           How to install
@@ -139,11 +144,7 @@ function InstallTutorialModal({
           <p className="mb-2 text-sm font-semibold text-ink/80">Your device</p>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Choose device">
             {INSTALL_OS_OPTIONS.map((option) => (
-              <Chip
-                key={option.id}
-                selected={os === option.id}
-                onClick={() => setOs(option.id)}
-              >
+              <Chip key={option.id} selected={os === option.id} onClick={() => setOs(option.id)}>
                 {option.label}
               </Chip>
             ))}

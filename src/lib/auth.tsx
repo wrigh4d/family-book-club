@@ -9,6 +9,9 @@ import {
 } from 'firebase/auth'
 import { auth } from './firebase'
 import { firebaseErrorCode, friendlyFirebaseError } from './errors'
+import { signInWithNativeGoogleCredential, signOutNativeAuth } from './nativeGoogleSignIn'
+import { googleSignInPath, isCancelledGoogleSignIn } from './signInPath'
+import { isStoreApp } from './storeApp'
 import { loadProfile, saveProfile } from './store'
 
 type AuthValue = {
@@ -33,8 +36,12 @@ function suggestedNameFromUser(user: User): string | null {
   return fromGoogle.split(/\s+/)[0] ?? null
 }
 
-function isCancelledSignIn(code: string): boolean {
-  return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'
+function isCancelledSignIn(error: unknown): boolean {
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : ''
+  return isCancelledGoogleSignIn(firebaseErrorCode(error), message)
 }
 
 function popupHelpMessage(code: string): string | null {
@@ -57,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear leftover redirect flows without blocking the auth listener.
     // Do not start new redirect sign-ins; Safari/iOS often lose sessionStorage.
     void getRedirectResult(auth).catch((err) => {
-      if (!cancelled && !isCancelledSignIn(firebaseErrorCode(err))) {
+      if (!cancelled && !isCancelledSignIn(err)) {
         setError(friendlyFirebaseError(err))
       }
     })
@@ -113,16 +120,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle: async () => {
         setError(null)
         try {
-          await signInWithPopup(auth, googleProvider)
+          if (googleSignInPath(isStoreApp()) === 'popup') {
+            await signInWithPopup(auth, googleProvider)
+            return
+          }
+          await signInWithNativeGoogleCredential(auth)
         } catch (err) {
           const code = firebaseErrorCode(err)
-          if (isCancelledSignIn(code)) return
+          if (isCancelledSignIn(err)) return
           setError(popupHelpMessage(code) ?? friendlyFirebaseError(err))
           throw err
         }
       },
       signOut: async () => {
         setError(null)
+        if (isStoreApp()) await signOutNativeAuth().catch(() => undefined)
         await firebaseSignOut(auth)
       },
     }),

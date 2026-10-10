@@ -28,3 +28,12 @@ dist-ssr
 !.env.example
 *serviceAccount*.json
 firebase-adminsdk*.json
+
+# Native release secrets. The web API key stays in .env.local.
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Recreated by npx cap sync. A Windows symlink must not be committed.
+ios/App/CapApp-SPM/symlinks/

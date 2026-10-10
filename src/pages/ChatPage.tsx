@@ -20,6 +20,8 @@ import {
   pushAvailability,
   type PushAvailability,
 } from '../lib/push'
+import { isStoreApp } from '../lib/storeApp'
+import { storeChrome } from '../lib/storeChrome'
 import { useClub } from '../lib/useClub'
 import type { ChatMessage } from '../types'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
@@ -60,6 +62,7 @@ function ChatRoom({
   const [sendError, setSendError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
+  const pushPrompt = storeChrome(isStoreApp()).pushPrompt
   const [pushState, setPushState] = useState<PushAvailability>(pushAvailability)
   const [pushNote, setPushNote] = useState<string | null>(null)
   const liveOldest = useRef<QueryDocumentSnapshot | null>(null)
@@ -95,6 +98,7 @@ function ChatRoom({
   }, [code, setError])
 
   useEffect(() => {
+    if (pushPrompt !== 'web') return
     if (pushAvailability() !== 'granted') return
     let cancelled = false
     void attachForegroundListener(uid)
@@ -109,7 +113,7 @@ function ChatRoom({
     return () => {
       cancelled = true
     }
-  }, [uid])
+  }, [pushPrompt, uid])
 
   const messageStamp = `${messages.length}:${messages[0]?.id ?? ''}:${messages.at(-1)?.id ?? ''}`
 
@@ -198,12 +202,14 @@ function ChatRoom({
   return (
     <div ref={pageRef} className="flex flex-1 flex-col gap-3">
       <ErrorBanner message={error} />
-      <PushNotice
-        state={pushState}
-        note={pushNote}
-        iosInstall={iosNeedsHomeScreen()}
-        onEnable={() => void handleEnablePush()}
-      />
+      {pushPrompt === 'web' ? (
+        <PushNotice
+          state={pushState}
+          note={pushNote}
+          iosInstall={iosNeedsHomeScreen()}
+          onEnable={() => void handleEnablePush()}
+        />
+      ) : null}
       <div className="flex flex-1 flex-col gap-3">
         {hasMore ? (
           <Button
@@ -276,7 +282,9 @@ function MessageRow({ message, mine }: { message: ChatMessage; mine: boolean }) 
     <li className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`max-w-[85%] rounded-2xl px-3 py-2 ${
-          mine ? 'bg-burgundy text-cream shadow-sm' : 'border border-rule/90 bg-paper text-ink shadow-sm'
+          mine
+            ? 'bg-burgundy text-cream shadow-sm'
+            : 'border border-rule/90 bg-paper text-ink shadow-sm'
         }`}
       >
         <p className={`text-xs font-semibold ${mine ? 'text-cream/80' : 'text-ink/60'}`}>
@@ -309,9 +317,7 @@ function PushNotice({
     case 'granted':
       return <PushBanner message="Notifications are on." />
     case 'unconfigured':
-      return (
-        <PushBanner message="Push needs a Firebase web key on this site." />
-      )
+      return <PushBanner message="Push needs a Firebase web key on this site." />
     case 'unsupported':
       return (
         <PushBanner
@@ -331,9 +337,7 @@ function PushNotice({
       return (
         <PushBanner
           message={`Get a ping for new messages.${
-            iosInstall
-              ? ' On iPhone, add to Home Screen and open from that icon first.'
-              : ''
+            iosInstall ? ' On iPhone, add to Home Screen and open from that icon first.' : ''
           }`}
           action={
             <Button type="button" variant="ghost" size="sm" onClick={onEnable}>

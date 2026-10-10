@@ -1,5 +1,6 @@
+import { Capacitor } from '@capacitor/core'
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { getAuth, indexedDBLocalPersistence, initializeAuth } from 'firebase/auth'
 import {
   getFirestore,
   initializeFirestore,
@@ -24,5 +25,8 @@ function createDb() {
   }
 }
 
-export const auth = getAuth(app)
+// The store WebView does not keep the default auth session. The website uses getAuth.
+export const auth = Capacitor.isNativePlatform()
+  ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
+  : getAuth(app)
 export const db = createDb()
