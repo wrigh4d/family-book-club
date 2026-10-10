@@ -12,23 +12,21 @@ import {
   toggleAlreadyRead,
 } from '../lib/store'
 import { useClub } from '../lib/useClub'
-import { useFinishedCatalog } from '../lib/useClubHistory'
 
 export function ShortlistPage() {
   const { code, uid, displayName, state, error, setError } = useClub()
-  const { catalog, error: historyError } = useFinishedCatalog(code, state)
 
-  const staleKey = catalog
-    ? staleShortlist(catalog)
+  const staleKey = state
+    ? staleShortlist(state)
         .map((book) => book.id)
         .sort()
         .join(',')
     : ''
 
   useEffect(() => {
-    if (!catalog || !staleKey) return
-    pruneShortlist(code, catalog).catch(() => undefined)
-  }, [code, staleKey, catalog])
+    if (!state || !staleKey) return
+    pruneShortlist(code, state).catch(() => undefined)
+  }, [code, staleKey, state])
 
   if (!uid || !displayName || !state) return null
 
@@ -36,35 +34,19 @@ export function ShortlistPage() {
     return <Navigate to={`/club/${code}`} replace />
   }
 
-  if (!catalog) {
-    return (
-      <>
-        <ErrorBanner message={historyError ?? error} />
-        <Card className="flex flex-col gap-3">
-          <CardTitle>Shortlist</CardTitle>
-          <p className="text-sm text-ink/70">
-            {historyError
-              ? 'Finished books didn’t load, so a past book can’t be added yet.'
-              : 'Still loading the club’s finished books.'}
-          </p>
-        </Card>
-      </>
-    )
-  }
-
-  const listed = availableShortlist(catalog)
+  const listed = availableShortlist(state)
 
   return (
     <>
-      <ErrorBanner message={historyError ?? error} />
+      <ErrorBanner message={error} />
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card className="flex flex-col gap-4">
-          <CardTitle>Add a book</CardTitle>
+          <CardTitle>Add</CardTitle>
           <Nominate
-            state={catalog}
+            state={state}
             onAdd={async (hit) => {
               try {
-                await addNomination(code, uid, displayName, hit, catalog)
+                await addNomination(code, uid, displayName, hit, state)
               } catch (err) {
                 setError(friendlyFirebaseError(err))
               }

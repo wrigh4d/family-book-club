@@ -2,6 +2,7 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { getMessaging, getToken, isSupported, onMessage, type MessagePayload } from 'firebase/messaging'
 import { chatPageUrl } from '../../functions/src/text.ts'
 import { app, db } from './firebase'
+import { isIosDevice, isStandaloneDisplay } from './pwa'
 
 export type PushAvailability = 'dev' | 'unsupported' | 'unconfigured' | 'default' | 'denied' | 'granted'
 
@@ -18,14 +19,7 @@ export function pushAvailability(): PushAvailability {
 }
 
 export function iosNeedsHomeScreen(): boolean {
-  if (typeof navigator === 'undefined') return false
-  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
-  if (!ios) return false
-  const standalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    ('standalone' in navigator &&
-      Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
-  return !standalone
+  return isIosDevice() && !isStandaloneDisplay()
 }
 
 async function tokenDocId(token: string): Promise<string> {

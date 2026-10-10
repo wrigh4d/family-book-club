@@ -45,7 +45,7 @@ export function FirstBookSetup({
 
   return (
     <Card className="flex flex-col gap-5">
-      <CardTitle>Choose the starting book</CardTitle>
+      <CardTitle>Starting book</CardTitle>
       <BookSearchForm
         query={query}
         onQueryChange={setQuery}
@@ -57,9 +57,9 @@ export function FirstBookSetup({
         <BookPickList books={hits} statusFor={statusFor} onPick={(hit) => onPick(asCurrent(hit))} />
       ) : null}
       <div>
-        <Subhead>Popular right now</Subhead>
+        <Subhead>Popular now</Subhead>
         {popular.length === 0 && !popularError ? (
-          <p className="text-sm text-ink/60">Loading popular titles…</p>
+          <p className="text-sm text-ink/55">Loading popular titles…</p>
         ) : (
           <BookPickList
             books={popular}

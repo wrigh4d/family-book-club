@@ -46,7 +46,7 @@ export function BookRow({
   action?: ReactNode
 }) {
   return (
-    <li className="flex flex-col gap-2 rounded-xl bg-cream p-2 sm:flex-row sm:items-center">
+    <li className="flex flex-col gap-2 rounded-xl border border-rule/50 bg-cream/90 p-2.5 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Cover src={coverUrl} title={title} className="h-16 w-11" />
         <div className="min-w-0 flex-1">
@@ -92,7 +92,7 @@ export function BookPickList({
             <button
               type="button"
               disabled={Boolean(blocked)}
-              className="flex w-full items-center gap-3 rounded-xl bg-cream p-2 text-left transition hover:bg-burgundy/10 disabled:pointer-events-none disabled:opacity-60"
+              className="flex w-full items-center gap-3 rounded-xl border border-rule/50 bg-cream/90 p-2.5 text-left transition hover:border-burgundy/40 hover:bg-burgundy/8 disabled:pointer-events-none disabled:opacity-60"
               onClick={() => onPick(hit)}
             >
               <Cover src={hit.coverUrl} title={hit.title} className="h-16 w-11" />

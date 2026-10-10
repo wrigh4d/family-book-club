@@ -1,16 +1,19 @@
 @import "tailwindcss";
+@import "./present-meeting.css";
 
 @theme {
     --font-display: "Fraunces", Georgia, serif;
     --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
-    --color-ink: #1c1612;
-    --color-cream: #f3eee4;
-    --color-paper: #fffaf3;
-    --color-rule: #e4d9c6;
-    --color-burgundy: #7a2e24;
-    --color-burgundy-dark: #5c211b;
-    --color-gold: #b0894f;
-    --color-moss: #4d5b43;
+    --color-ink: #1a1410;
+    --color-cream: #f4efe6;
+    --color-paper: #fffcf7;
+    --color-rule: #e5d9c8;
+    --color-burgundy: #742c23;
+    --color-burgundy-dark: #561f19;
+    --color-gold: #a67c3d;
+    --color-moss: #4a5742;
+    --shadow-card: 0 1px 2px rgb(26 20 16 / 0.04), 0 10px 28px rgb(26 20 16 / 0.06);
+    --shadow-lift: 0 2px 6px rgb(26 20 16 / 0.06), 0 14px 32px rgb(26 20 16 / 0.09);
 }
 
 html,
@@ -19,11 +22,37 @@ body,
     min-height: 100%;
 }
 
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     margin: 0;
-    background: var(--color-cream);
+    background:
+        radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--color-gold) 12%, transparent), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--color-burgundy) 8%, transparent), transparent 50%),
+        var(--color-cream);
+    background-attachment: fixed;
     color: var(--color-ink);
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
+}
+
+::selection {
+    background: color-mix(in srgb, var(--color-burgundy) 28%, transparent);
+    color: var(--color-ink);
+}
+
+button,
+input,
+select,
+textarea,
+a {
+    touch-action: manipulation;
 }
 
 button,
@@ -31,6 +60,13 @@ input,
 select,
 textarea {
     font: inherit;
+}
+
+/* iOS Safari zooms focused controls under 16px; in home-screen apps that zoom sticks. */
+input,
+select,
+textarea {
+    font-size: 16px;
 }
 
 button:not(:disabled),
@@ -50,6 +86,48 @@ summary::-webkit-details-marker {
 
 button:disabled {
     cursor: not-allowed;
+}
+
+.skip-link {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.75rem;
+    z-index: 100;
+    transform: translateY(-150%);
+    border-radius: 0.75rem;
+    background: var(--color-burgundy);
+    color: var(--color-cream);
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+}
+
+.loading-pulse {
+    display: inline-block;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 9999px;
+    background: var(--color-burgundy);
+    animation: loading-pulse 1s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 @keyframes shortlist-scroll {
@@ -75,8 +153,32 @@ button:disabled {
     animation-play-state: paused;
 }
 
+@keyframes meeting-comment-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.4rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.meeting-comment {
+    animation: meeting-comment-in 420ms ease both;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .shortlist-ticker-track {
+        animation: none;
+    }
+
+    .loading-pulse {
+        animation: none;
+        opacity: 0.7;
+    }
+
+    .meeting-comment {
         animation: none;
     }
 }
@@ -107,5 +209,3 @@ button:disabled {
     max-height: 6rem;
     overflow-y: auto;
 }
-
-

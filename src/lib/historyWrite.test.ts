@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { commitReaction, finishHistoryFields, reactionFields, subjectList } from './historyWrite'
+import {
+  commitReaction,
+  finishHistoryFields,
+  historySetWithNotesClear,
+  reactionFields,
+  subjectList,
+} from './historyWrite'
 import type { CurrentBook, HistoryBook } from '../types'
 
 const dune: CurrentBook = {
@@ -19,7 +25,7 @@ function finished(finishedAt: number): HistoryBook {
     ...dune,
     finishedAt,
     ratings: { u1: 4 },
-    notes: { u1: 'Loved it' },
+    comments: [],
     subjects: ['deserts'],
   }
 }
@@ -102,7 +108,7 @@ describe('finishHistoryFields', () => {
       olid: '/works/OL1',
       finishedAt: 500,
       ratings: {},
-      notes: {},
+      comments: [],
     })
   })
 
@@ -110,7 +116,7 @@ describe('finishHistoryFields', () => {
     const fields = finishHistoryFields(dune, finished(100), 'r2', 500)
     expect(fields.finishedAt).toBe(100)
     expect(fields).not.toHaveProperty('ratings')
-    expect(fields).not.toHaveProperty('notes')
+    expect(fields).not.toHaveProperty('comments')
   })
 })
 
@@ -118,5 +124,28 @@ describe('subjectList', () => {
   it('keeps looked-up subjects and falls back to the genre', () => {
     expect(subjectList(['deserts'], 'Science Fiction')).toEqual(['deserts'])
     expect(subjectList([], 'Science Fiction')).toEqual(['Science Fiction'])
+  })
+})
+
+describe('historySetWithNotesClear', () => {
+  it('always pairs deleteField-style notes clear with merge:true', () => {
+    const clearNotes = { _methodName: 'FieldValue.delete' }
+    const { data, options } = historySetWithNotesClear(
+      { comments: [], ratings: { u1: 4 }, title: 'Book' },
+      clearNotes,
+    )
+    expect(options).toEqual({ merge: true })
+    expect(data.notes).toBe(clearNotes)
+    expect(data.comments).toEqual([])
+    expect(data.ratings).toEqual({ u1: 4 })
+    expect(data.title).toBe('Book')
+  })
+
+  it('does not mutate the input payload object', () => {
+    const input = { comments: [{ id: 'c1' }] }
+    const clearNotes = Symbol('delete')
+    historySetWithNotesClear(input, clearNotes)
+    expect(input).toEqual({ comments: [{ id: 'c1' }] })
+    expect('notes' in input).toBe(false)
   })
 })

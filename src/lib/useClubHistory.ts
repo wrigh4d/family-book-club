@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { ClubState, HistoryBook } from '../types'
-import { selectFinishedCatalog } from './bookStatus'
+import { useEffect, useState } from 'react'
+import type { HistoryBook } from '../types'
 import { friendlyFirebaseError } from './errors'
 import { subscribeClubHistory } from './store'
 
@@ -30,18 +29,4 @@ export function useClubHistory(code: string | null) {
   if (!code) return { books: [] as HistoryBook[], ready: true, error: null }
   if (snapshot?.code !== code) return { books: [] as HistoryBook[], ready: false, error: null }
   return { books: snapshot.books, ready: true, error: snapshot.error }
-}
-
-/** Meeting, shortlist, and conclude read the finished catalog. Pass the live snapshot to the current-book card. */
-export function useFinishedCatalog(
-  code: string | null,
-  live: ClubState | null,
-): { catalog: ClubState | null; error: string | null } {
-  const history = useClubHistory(live && code ? code : null)
-  const { books, ready, error } = history
-  const catalog = useMemo(
-    () => selectFinishedCatalog(live, { books, ready, error }),
-    [live, books, ready, error],
-  )
-  return { catalog, error }
 }

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ClubList } from '../components/ClubList'
+import { InstallHint } from '../components/InstallHint'
 import {
   Brand,
   Button,
@@ -9,6 +10,7 @@ import {
   ErrorBanner,
   Field,
   GoogleSignInCard,
+  LoadingState,
   NameForm,
   Page,
   TextButton,
@@ -100,19 +102,19 @@ export function Landing() {
     <Page width={board ? 'wide' : 'narrow'}>
       <header className="flex flex-col gap-2">
         {ready && !uid ? <Brand /> : null}
-        <h1 className="font-display text-4xl leading-tight">
-          Pick a book the whole club will actually read.
+        <h1 className="font-display text-4xl leading-[1.1] tracking-tight">
+          Your club. Your next book.
         </h1>
-        <p className="text-ink/80">
-          Create a club, share a code, add rules and nominations, then present the next pick when
-          you meet.
+        <p className="max-w-md text-ink/70">
+          Share a code, nominate picks, and choose together when you meet.
         </p>
       </header>
 
       <ErrorBanner message={localError ?? clubsError ?? error} />
+      <InstallHint />
 
       {!ready ? (
-        <p>Getting you in…</p>
+        <LoadingState label="Getting you in…" />
       ) : !uid ? (
         <GoogleSignInCard onSignIn={() => void handleGoogle()} busy={busy} />
       ) : !displayName ? (
@@ -123,7 +125,7 @@ export function Landing() {
             <TextButton onClick={() => void signOut()}>Sign out</TextButton>
           </p>
           <Card>
-            <h2 className="mb-3 font-display text-2xl">What should we call you?</h2>
+            <h2 className="mb-3 font-display text-2xl tracking-tight">What should we call you?</h2>
             <NameForm
               defaultName={suggestedName ?? ''}
               onSave={(name) => withName(async () => undefined, name)}
@@ -131,14 +133,14 @@ export function Landing() {
           </Card>
         </>
       ) : (
-        <div className="grid items-start gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
           <Card className="md:col-span-2">
-            <h2 className="mb-3 font-display text-2xl">Your clubs</h2>
+            <h2 className="mb-3 font-display text-2xl tracking-tight">Your clubs</h2>
             {!clubsReady ? (
-              <p className="text-sm text-ink/70">Loading your clubs…</p>
+              <LoadingState label="Loading your clubs…" />
             ) : (
               <div className="flex flex-col gap-3">
-                <ClubList clubs={clubs} empty="Clubs you create or join will show up here." />
+                <ClubList clubs={clubs} empty="Create or join a club to get started." />
                 <Link className={`${buttonClass('secondary')} sm:self-start`} to="/clubs">
                   {clubs.length > 0 ? 'See all clubs' : 'Go to your clubs'}
                 </Link>
@@ -146,7 +148,7 @@ export function Landing() {
             )}
           </Card>
           <Card>
-            <h2 className="mb-3 font-display text-2xl">Create a club</h2>
+            <h2 className="mb-3 font-display text-2xl tracking-tight">Create</h2>
             <form className="flex flex-col gap-3" onSubmit={handleCreate}>
               <Field label="Club name">
                 <TextInput name="clubName" placeholder="Sunday readers" required maxLength={80} />
@@ -157,7 +159,7 @@ export function Landing() {
             </form>
           </Card>
           <Card>
-            <h2 className="mb-3 font-display text-2xl">Join a club</h2>
+            <h2 className="mb-3 font-display text-2xl tracking-tight">Join</h2>
             <form className="flex flex-col gap-3" onSubmit={handleJoin}>
               <Field label="Club code">
                 <TextInput

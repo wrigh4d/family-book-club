@@ -122,6 +122,14 @@ export type SuggestionSnapshot = {
   ratingsRecommendation?: AppRecommendation | null
 }
 
+export type BookComment = {
+  id: string
+  uid: string
+  name: string
+  text: string
+  at: number
+}
+
 export type HistoryBook = {
   id: string
   roundId: string
@@ -132,7 +140,8 @@ export type HistoryBook = {
   genre: Genre
   finishedAt: number
   ratings: Record<string, number>
-  notes?: Record<string, string>
+  /** Flat club comments (newest-first when displayed). Legacy `notes` maps migrate on read. */
+  comments?: BookComment[]
   subjects?: string[]
 }
 

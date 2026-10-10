@@ -6,6 +6,7 @@ import type { Plugin } from 'vite'
 function familyBookClubManifest(): Plugin {
   let base = '/'
   const manifest = () => ({
+    id: base,
     name: 'Book Club',
     short_name: 'Book Club',
     description:
@@ -13,11 +14,16 @@ function familyBookClubManifest(): Plugin {
     start_url: base,
     scope: base,
     display: 'standalone',
+    display_override: ['standalone', 'browser'],
+    orientation: 'portrait-primary',
+    lang: 'en',
+    categories: ['books', 'social', 'lifestyle'],
     background_color: '#f3eee4',
     theme_color: '#f3eee4',
     icons: [
-      { src: `${base}icon-192.png`, sizes: '192x192', type: 'image/png' },
-      { src: `${base}icon-512.png`, sizes: '512x512', type: 'image/png' },
+      { src: `${base}icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: `${base}icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: `${base}icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   })
 

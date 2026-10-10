@@ -16,16 +16,41 @@ export function Page({
 }) {
   const max = width === 'wide' ? 'max-w-5xl' : 'max-w-xl'
   return (
-    <div className="min-h-dvh bg-cream text-ink">
-      <div className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`}>
+    <div className="min-h-dvh bg-transparent text-ink pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <div
+        id="main"
+        tabIndex={-1}
+        className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] outline-none sm:px-6 sm:pt-[max(2.5rem,env(safe-area-inset-top))] sm:pb-[max(2.5rem,env(safe-area-inset-bottom))]`}
+      >
         {children}
       </div>
     </div>
   )
 }
 
+export function LoadingState({ label = 'Loading…' }: { label?: string }) {
+  return (
+    <p role="status" aria-live="polite" className="flex items-center gap-3 text-sm text-ink/65">
+      <span className="loading-pulse" aria-hidden="true" />
+      {label}
+    </p>
+  )
+}
+
 export function Brand() {
-  return <p className="font-display text-sm tracking-wide text-burgundy">Book Club</p>
+  return (
+    <p className="font-display text-sm tracking-[0.14em] text-burgundy uppercase">Book Club</p>
+  )
+}
+
+export function Eyebrow({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <p
+      className={`text-[11px] font-semibold tracking-[0.18em] text-gold uppercase ${className}`}
+    >
+      {children}
+    </p>
+  )
 }
 
 export function ClubHeader({ name, action }: { name: string; action?: ReactNode }) {
@@ -33,7 +58,9 @@ export function ClubHeader({ name, action }: { name: string; action?: ReactNode 
     <header className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-3xl leading-tight md:text-4xl">{name}</h1>
+          <h1 className="truncate font-display text-3xl leading-[1.1] tracking-tight md:text-4xl">
+            {name}
+          </h1>
         </div>
         {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
       </div>
@@ -44,7 +71,9 @@ export function ClubHeader({ name, action }: { name: string; action?: ReactNode 
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-rule bg-paper p-4 shadow-sm ${className}`}>
+    <section
+      className={`min-w-0 rounded-2xl border border-rule/90 bg-paper p-5 shadow-[var(--shadow-card)] ${className}`}
+    >
       {children}
     </section>
   )
@@ -54,18 +83,18 @@ export function AccentRule({ className = '' }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`block h-0.5 w-full rounded-full bg-gradient-to-r from-gold via-gold/70 to-gold/15 ${className}`}
+      className={`block h-0.5 w-full rounded-full bg-gradient-to-r from-gold via-gold/65 to-transparent ${className}`}
     />
   )
 }
 
 export function CardTitle({ children }: { children: ReactNode }) {
-  return <h2 className="font-display text-xl leading-tight">{children}</h2>
+  return <h2 className="font-display text-xl leading-tight tracking-tight">{children}</h2>
 }
 
 export function Subhead({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+    <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink/85">
       <span aria-hidden="true" className="h-3.5 w-0.5 rounded-full bg-gold" />
       {children}
     </p>
@@ -101,8 +130,8 @@ export function Accordion({ title, children }: { title: string; children: ReactN
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-semibold">{label}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-semibold text-ink/80">{label}</span>
       {children}
     </label>
   )
@@ -112,7 +141,7 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-xl border border-rule bg-cream px-3 py-3 outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
+      className={`min-h-11 min-w-0 w-full rounded-xl border border-rule bg-cream/80 px-3.5 py-3 text-base outline-none ring-burgundy transition placeholder:text-ink/35 hover:border-burgundy/50 focus:bg-paper focus:ring-2 focus-visible:ring-2 ${props.className ?? ''}`}
     />
   )
 }
@@ -121,7 +150,7 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={`min-h-28 w-full rounded-xl border border-rule bg-cream px-3 py-3 outline-none ring-burgundy transition hover:border-burgundy focus:ring-2 ${props.className ?? ''}`}
+      className={`min-h-28 w-full rounded-xl border border-rule bg-cream/80 px-3.5 py-3 text-base outline-none ring-burgundy transition placeholder:text-ink/35 hover:border-burgundy/50 focus:bg-paper focus:ring-2 ${props.className ?? ''}`}
     />
   )
 }
@@ -135,12 +164,14 @@ export function buttonClass(
     sm: 'rounded-lg px-3 py-2 text-sm',
   }[size]
   const styles = {
-    primary: 'bg-burgundy text-cream hover:bg-burgundy-dark hover:shadow-md hover:-translate-y-px',
-    secondary: 'bg-ink text-cream hover:bg-burgundy hover:shadow-md hover:-translate-y-px',
+    primary:
+      'bg-burgundy text-cream shadow-sm hover:bg-burgundy-dark hover:shadow-[var(--shadow-lift)] motion-safe:hover:-translate-y-px',
+    secondary:
+      'bg-ink text-cream shadow-sm hover:bg-burgundy hover:shadow-[var(--shadow-lift)] motion-safe:hover:-translate-y-px',
     ghost:
-      'border border-burgundy bg-transparent text-burgundy hover:bg-burgundy hover:text-cream hover:shadow-md',
+      'border border-burgundy/80 bg-transparent text-burgundy hover:bg-burgundy hover:text-cream hover:shadow-md',
   }[variant]
-  return `inline-flex items-center justify-center text-center font-semibold transition duration-150 ease-out active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${sizes} ${styles}`
+  return `inline-flex min-h-11 items-center justify-center text-center font-semibold transition duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy focus-visible:ring-offset-2 focus-visible:ring-offset-cream motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${sizes} ${styles}`
 }
 
 export function Button({
@@ -169,10 +200,10 @@ export function Chip({
       type="button"
       {...props}
       aria-pressed={Boolean(selected)}
-      className={`rounded-full border px-3 py-1.5 text-sm transition duration-150 ease-out active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 ${
+      className={`min-h-9 rounded-full border px-3.5 py-1.5 text-sm transition duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy focus-visible:ring-offset-2 focus-visible:ring-offset-cream motion-safe:active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 ${
         selected
-          ? 'border-burgundy bg-burgundy text-cream hover:bg-burgundy-dark hover:shadow-sm'
-          : 'border-rule bg-cream text-ink hover:border-burgundy hover:bg-burgundy/10 hover:text-burgundy'
+          ? 'border-burgundy bg-burgundy text-cream shadow-sm hover:bg-burgundy-dark'
+          : 'border-rule bg-cream/90 text-ink hover:border-burgundy/60 hover:bg-burgundy/8 hover:text-burgundy'
       } ${props.className ?? ''}`}
     >
       {children}
@@ -181,7 +212,7 @@ export function Chip({
 }
 
 const textLinkClass =
-  'text-sm font-semibold text-burgundy underline decoration-burgundy/40 underline-offset-2 transition hover:text-burgundy-dark hover:decoration-burgundy'
+  'text-sm font-semibold text-burgundy underline decoration-burgundy/35 underline-offset-2 transition hover:text-burgundy-dark hover:decoration-burgundy'
 
 export function TextButton({
   children,
@@ -216,7 +247,7 @@ export function ErrorBanner({ message }: { message: string | null }) {
   return (
     <p
       role="alert"
-      className="rounded-xl border border-burgundy/30 bg-burgundy/10 px-3 py-2 text-sm text-burgundy"
+      className="rounded-xl border border-burgundy/25 bg-burgundy/8 px-3.5 py-2.5 text-sm text-burgundy"
     >
       {message}
     </p>
@@ -259,8 +290,8 @@ export function NameForm({
 export function GoogleSignInCard({
   onSignIn,
   busy = false,
-  title = 'Sign in to continue',
-  body = 'Use the same Google account on your phone and computer so you only join the club once.',
+  title = 'Sign in',
+  body = 'Use the same Google account on phone and computer.',
 }: {
   onSignIn: () => void
   busy?: boolean
@@ -269,8 +300,8 @@ export function GoogleSignInCard({
 }) {
   return (
     <Card>
-      <h2 className="mb-3 font-display text-2xl">{title}</h2>
-      <p className="mb-4 text-sm text-ink/70">{body}</p>
+      <h2 className="mb-2 font-display text-2xl tracking-tight">{title}</h2>
+      <p className="mb-4 text-sm text-ink/65">{body}</p>
       <Button type="button" onClick={onSignIn} disabled={busy}>
         Continue with Google
       </Button>
@@ -292,7 +323,7 @@ export function Cover({
   if (!src) {
     return (
       <div
-        className={`flex shrink-0 items-center justify-center rounded-lg bg-burgundy text-center font-display text-xs text-cream ${className}`}
+        className={`flex shrink-0 items-center justify-center rounded-lg bg-burgundy text-center font-display text-xs text-cream shadow-sm ${className}`}
       >
         {title.slice(0, 18)}
       </div>
@@ -305,7 +336,7 @@ export function Cover({
       loading={loading}
       decoding="async"
       referrerPolicy="no-referrer"
-      className={`shrink-0 rounded-lg object-cover ${className}`}
+      className={`shrink-0 rounded-lg object-cover shadow-sm ${className}`}
     />
   )
 }
