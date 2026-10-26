@@ -1,12 +1,15 @@
+import { useEffect, useRef, useState } from 'react'
 import { availableShortlist, clubBookStatus, clubBookStatusLabel } from '../lib/bookStatus'
 import { useBookSearch } from '../lib/useBookSearch'
 import {
   type AppRecommendation,
   type ClubState,
   type CurrentBook,
+  type Nomination,
   recToCurrentBook,
 } from '../types'
 import { BookHitRow, BookRow, BookSearchForm } from './bookSearch'
+import { ShortlistDrawDialog } from './ShortlistDrawDialog'
 import { Button, Cover, ErrorBanner, TextButton } from './ui'
 
 export function ConcludePicker({
@@ -23,8 +26,24 @@ export function ConcludePicker({
   onRemove: (id: string) => void
 }) {
   const shortlist = availableShortlist(state)
+  const draw = useShortlistOffer(shortlist)
   return (
     <div className="flex flex-col gap-4">
+      {draw.book ? (
+        <ShortlistDrawDialog
+          title={draw.book.title}
+          author={draw.book.author}
+          coverUrl={draw.book.coverUrl}
+          onChoose={() => {
+            if (!draw.book) return
+            onPick(draw.book)
+            draw.dismiss()
+          }}
+          onSkip={draw.dismiss}
+        />
+      ) : draw.settled && shortlist.length > 0 ? (
+        <TextButton onClick={draw.reopen}>Draw a shortlist book</TextButton>
+      ) : null}
       {recs.genre ? (
         <ConcludeRec
           label="Genre favorite"
@@ -165,4 +184,42 @@ function ConcludeRec({
       </div>
     </div>
   )
+}
+
+function useShortlistOffer(books: Nomination[]) {
+  const [book, setBook] = useState<Nomination | null>(null)
+  const [settled, setSettled] = useState(false)
+  const [offered, setOffered] = useState(false)
+  const booksRef = useRef(books)
+  const ids = books.map((item) => item.id).join('\0')
+
+  useEffect(() => {
+    booksRef.current = books
+  }, [books])
+
+  useEffect(() => {
+    if (offered || ids.length === 0) return
+    const handle = window.setTimeout(() => {
+      const snapshot = booksRef.current
+      if (snapshot.length === 0) return
+      setOffered(true)
+      setBook(snapshot[Math.floor(Math.random() * snapshot.length)] ?? null)
+      setSettled(true)
+    }, 0)
+    return () => window.clearTimeout(handle)
+  }, [offered, ids])
+
+  function dismiss() {
+    setBook(null)
+    setSettled(true)
+  }
+
+  function reopen() {
+    if (books.length === 0) return
+    setBook(books[Math.floor(Math.random() * books.length)] ?? null)
+    setSettled(true)
+  }
+
+  const visible = book && books.some((item) => item.id === book.id) ? book : null
+  return { book: visible, settled, dismiss, reopen }
 }

@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ConcludePicker } from '../components/ConcludePicker'
+import { GenrePreferenceChips } from '../components/GenrePreferenceChips'
 import { CurrentBookCard } from '../components/CurrentBookCard'
 import { NextMeeting } from '../components/NextMeeting'
 import { FirstBookSetup } from '../components/FirstBookSetup'
@@ -352,6 +353,7 @@ function RoundStatus({
       return (
         <Card className="flex flex-col gap-4">
           <CardTitle>Next book</CardTitle>
+          <GenrePreferenceChips votes={state.genreVotes} />
           {owner ? (
             <ConcludePicker
               state={state}
