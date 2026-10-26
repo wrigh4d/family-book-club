@@ -18,6 +18,7 @@ import { useBookSearch } from '../lib/useBookSearch'
 import type { ClubState, CurrentBook } from '../types'
 import { BookPickList, BookRow, BookSearchForm } from './bookSearch'
 import { CommentSection } from './CommentSection'
+import { CurrentBookDialog } from './CurrentBookDialog'
 import { Button, Card, CardTitle, Cover, ErrorBanner, Eyebrow, Subhead, TextButton } from './ui'
 
 export function CurrentBookCard({
@@ -38,6 +39,7 @@ export function CurrentBookCard({
   const ratings = history?.ratings ?? {}
   const myRating = ratings[uid]
   const [changeForId, setChangeForId] = useState<string | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const changing = Boolean(current && changeForId === current.olid)
   const facts = useBookFacts(current)
@@ -73,14 +75,27 @@ export function CurrentBookCard({
     <Card className="flex flex-col gap-4">
       <CardTitle>Current book</CardTitle>
       <div className="flex gap-4">
-        <Cover
-          src={current.coverUrl}
-          title={current.title}
-          loading="eager"
-          className="h-36 w-24 shadow-md ring-1 ring-gold/35 sm:h-48 sm:w-32"
-        />
+        <button
+          type="button"
+          className="shrink-0 rounded-lg"
+          aria-label={`About ${current.title}`}
+          onClick={() => setDetailsOpen(true)}
+        >
+          <Cover
+            src={current.coverUrl}
+            title={current.title}
+            loading="eager"
+            className="h-36 w-24 shadow-md ring-1 ring-gold/35 sm:h-48 sm:w-32"
+          />
+        </button>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-2xl leading-tight break-words">{current.title}</p>
+          <button
+            type="button"
+            className="text-left font-display text-2xl leading-tight break-words"
+            onClick={() => setDetailsOpen(true)}
+          >
+            {current.title}
+          </button>
           <p className="text-sm text-ink/70">{current.author}</p>
           {facts ? <p className="mt-1 text-sm text-ink/60">{facts}</p> : null}
           <p className="mt-2 text-sm font-semibold text-burgundy">
@@ -155,6 +170,9 @@ export function CurrentBookCard({
           />
         </>
       )}
+      {detailsOpen ? (
+        <CurrentBookDialog book={current} onClose={() => setDetailsOpen(false)} />
+      ) : null}
     </Card>
   )
 }

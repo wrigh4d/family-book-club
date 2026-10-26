@@ -178,9 +178,27 @@ export async function popularBookInGenre(
 type WorkResponse = {
   subjects?: string[]
   subject_places?: string[]
+  description?: unknown
+}
+
+/** Open Library stores a work description as a string or as `{ type, value }`. */
+export function workDescriptionText(description: unknown): string | null {
+  const raw = descriptionString(description)
+  if (!raw) return null
+  const trimmed = raw.trim()
+  return trimmed ? trimmed : null
+}
+
+function descriptionString(description: unknown): string | null {
+  if (typeof description === 'string') return description
+  if (typeof description !== 'object' || description === null || !('value' in description)) {
+    return null
+  }
+  return typeof description.value === 'string' ? description.value : null
 }
 
 const workSubjectsCache = new Map<string, Promise<string[]>>()
+const workDescriptionCache = new Map<string, Promise<string | null>>()
 const workFactsCache = new Map<
   string,
   Promise<{ firstPublishYear: number | null; pageCount: number | null } | null>
@@ -202,6 +220,25 @@ export async function fetchWorkSubjects(olid: string): Promise<string[]> {
     }
   })()
   workSubjectsCache.set(key, pending)
+  return pending
+}
+
+export async function fetchWorkDescription(olid: string): Promise<string | null> {
+  const key = olid.startsWith('/works/') ? olid : `/works/${olid}`
+  const cached = workDescriptionCache.get(key)
+  if (cached) return cached
+  const pending = (async () => {
+    try {
+      const data = await fetchJson<WorkResponse>(
+        `https://openlibrary.org${key}.json`,
+        'Could not load the book description.',
+      )
+      return workDescriptionText(data.description)
+    } catch {
+      return null
+    }
+  })()
+  workDescriptionCache.set(key, pending)
   return pending
 }
 
