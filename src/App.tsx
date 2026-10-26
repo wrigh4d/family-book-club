@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { useForegroundPush } from './lib/useForegroundPush'
@@ -11,6 +12,10 @@ import { Present } from './pages/Present'
 import { ShortlistPage } from './pages/ShortlistPage'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
+
+const NextMeetingPrototype = import.meta.env.DEV
+  ? lazy(() => import('./pages/NextMeetingPrototype'))
+  : null
 
 function AppRoutes() {
   const { uid } = useAuth()
@@ -28,6 +33,16 @@ function AppRoutes() {
         </Route>
         <Route path="present" element={<Present />} />
       </Route>
+      {NextMeetingPrototype ? (
+        <Route
+          path="/prototype/next-meeting"
+          element={
+            <Suspense fallback={<p className="p-6 text-sm text-ink/60">Loading prototype…</p>}>
+              <NextMeetingPrototype />
+            </Suspense>
+          }
+        />
+      ) : null}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
