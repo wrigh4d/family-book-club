@@ -70,6 +70,17 @@ function snapshotFromState(
   }
 }
 
+export async function setNextMeeting(
+  code: string,
+  state: ClubState,
+  uid: string,
+  at: number,
+): Promise<void> {
+  assertOwner(state, uid)
+  if (!Number.isFinite(at) || at <= 0) throw new Error('Choose a date and time.')
+  await updateDoc(clubRef(code), { nextMeetingAt: at })
+}
+
 export async function startPresenting(code: string, state: ClubState, uid: string): Promise<void> {
   assertOwner(state, uid)
   if (!state.round) throw new Error('No active round.')

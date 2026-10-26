@@ -20,6 +20,7 @@ export {
   savePersonalNote,
   seedGenreVotesFromPreviousRound,
   setGenreVotes,
+  setNextMeeting,
   setStartingBook,
   startConcluding,
   startPresenting,

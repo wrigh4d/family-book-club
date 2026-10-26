@@ -15,6 +15,7 @@ export {
   pickNextBook,
   rateCurrentBook,
   savePersonalNote,
+  setNextMeeting,
   setStartingBook,
   startConcluding,
   startPresenting,

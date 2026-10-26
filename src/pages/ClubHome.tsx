@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ConcludePicker } from '../components/ConcludePicker'
 import { CurrentBookCard } from '../components/CurrentBookCard'
+import { NextMeeting } from '../components/NextMeeting'
 import { FirstBookSetup } from '../components/FirstBookSetup'
 import { GenreVotes } from '../components/GenreVotes'
 import {
@@ -23,6 +24,7 @@ import {
   removeFromShortlist,
   resolveCurrentBook,
   setGenreVotes,
+  setNextMeeting,
   setStartingBook,
   startPresenting,
 } from '../lib/store'
@@ -45,6 +47,9 @@ export function ClubHome() {
     <ClubInformation
       members={state.members}
       rules={state.rules}
+      owner={owner}
+      nextMeetingAt={state.club.nextMeetingAt ?? null}
+      onSetMeeting={(at) => setNextMeeting(code, state, uid, at)}
       onAdd={async (text) => {
         try {
           await addRule(code, text, uid, displayName)
@@ -149,14 +154,21 @@ export function ClubHome() {
 function ClubInformation({
   members,
   rules,
+  owner,
+  nextMeetingAt,
+  onSetMeeting,
   onAdd,
 }: {
   members: ClubState['members']
   rules: ClubState['rules']
+  owner: boolean
+  nextMeetingAt: number | null
+  onSetMeeting: (at: number) => Promise<void>
   onAdd: (text: string) => Promise<void>
 }) {
   const { code, setError } = useClub()
   const [copied, setCopied] = useState(false)
+  const [savingMeeting, setSavingMeeting] = useState(false)
   const copiedTimer = useRef<number | null>(null)
   const invite = `${window.location.origin}${import.meta.env.BASE_URL}club/${code}`.replace(
     /([^:]\/)\/+/g,
@@ -197,6 +209,17 @@ function ClubInformation({
           {copied ? 'Copied' : 'Copy invite'}
         </Button>
       </div>
+      <NextMeeting
+        at={nextMeetingAt}
+        owner={owner}
+        busy={savingMeeting}
+        onSet={(at) => {
+          setSavingMeeting(true)
+          void onSetMeeting(at)
+            .catch((err) => setError(friendlyFirebaseError(err)))
+            .finally(() => setSavingMeeting(false))
+        }}
+      />
       <details className="group">
         <summary className="flex list-none items-center justify-between gap-3 text-sm font-semibold outline-none select-none marker:content-none focus-visible:ring-2 focus-visible:ring-burgundy [&::-webkit-details-marker]:hidden">
           Members & rules

@@ -1,5 +1,5 @@
 rules_version = '2';
-// family-book-club rules v9
+// family-book-club rules v10
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -76,7 +76,11 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid;
       allow update: if isOwner()
-        && request.resource.data.createdBy == resource.data.createdBy;
+        && request.resource.data.createdBy == resource.data.createdBy
+        && (
+          !('nextMeetingAt' in request.resource.data)
+          || request.resource.data.nextMeetingAt is number
+        );
       allow delete: if false;
 
       match /members/{userId} {

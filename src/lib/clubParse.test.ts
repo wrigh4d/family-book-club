@@ -138,6 +138,12 @@ describe('asClub', () => {
     ).toBe('r1')
     expect(asClub('ABCD', { name: 'Club', currentRoundId: 'r2' }).previousRoundId).toBeNull()
   })
+
+  it('reads a next meeting time and ignores a missing one', () => {
+    expect(asClub('ABCD', { nextMeetingAt: 1_700_000_000_000 }).nextMeetingAt).toBe(1_700_000_000_000)
+    expect(asClub('ABCD', { name: 'Club' }).nextMeetingAt).toBeNull()
+    expect(asClub('ABCD', { nextMeetingAt: 'soon' }).nextMeetingAt).toBeNull()
+  })
 })
 
 describe('asRound', () => {

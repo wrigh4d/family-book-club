@@ -161,6 +161,7 @@ export type Club = {
   currentBook: CurrentBook | null
   createdAt: number
   dislikedRecs: DislikedRec[]
+  nextMeetingAt?: number | null
 }
 
 export type ClubMembership = {

@@ -31,6 +31,12 @@ function asPositiveInt(value: unknown): number | null {
   return Math.round(n)
 }
 
+function asTimestamp(value: unknown): number | null {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n
+}
+
 export function parseDislikedRecs(value: unknown): Club['dislikedRecs'] {
   if (!Array.isArray(value)) return []
   const recs: Club['dislikedRecs'] = []
@@ -101,6 +107,7 @@ export function asClub(code: string, data: Record<string, unknown>): Club {
     currentBook: parseCurrentBook(data.currentBook),
     createdAt: asNumber(data.createdAt),
     dislikedRecs: parseDislikedRecs(data.dislikedRecs),
+    nextMeetingAt: asTimestamp(data.nextMeetingAt),
   }
 }
 
