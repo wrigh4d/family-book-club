@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import {
-  getRedirectResult,
+  browserPopupRedirectResolver,
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
@@ -61,14 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    // Clear leftover redirect flows without blocking the auth listener.
-    // Do not start new redirect sign-ins; Safari/iOS often lose sessionStorage.
-    void getRedirectResult(auth).catch((err) => {
-      if (!cancelled && !isCancelledSignIn(err)) {
-        setError(friendlyFirebaseError(err))
-      }
-    })
-
     const unsub = onAuthStateChanged(auth, async (user) => {
       try {
         if (user?.isAnonymous) {
@@ -121,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null)
         try {
           if (googleSignInPath(isStoreApp()) === 'popup') {
-            await signInWithPopup(auth, googleProvider)
+            await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver)
             return
           }
           await signInWithNativeGoogleCredential(auth)

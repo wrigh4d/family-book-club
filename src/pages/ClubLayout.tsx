@@ -1,22 +1,10 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { ClubEntry } from '../components/ClubEntry'
 import { AccountMenu, ClubSectionNav, ClubTabBar, type ClubSection } from '../components/clubNav'
 import { useAuth } from '../lib/auth'
 import { useChatUnread } from '../lib/useChatUnread'
-import {
-  AccentRule,
-  Brand,
-  Button,
-  Card,
-  ClubHeader,
-  ErrorBanner,
-  GoogleSignInCard,
-  LoadingState,
-  NameForm,
-  Page,
-  TextButton,
-} from '../components/ui'
-import { friendlyFirebaseError } from '../lib/errors'
+import { Button, ClubHeader, ErrorBanner, Page } from '../components/ui'
 import { ClubProvider, useClub } from '../lib/useClub'
 
 export function ClubLayout() {
@@ -28,21 +16,8 @@ export function ClubLayout() {
 }
 
 function ClubGate() {
-  const {
-    uid,
-    displayName,
-    suggestedName,
-    ready,
-    state,
-    error,
-    setError,
-    setDisplayName,
-    code,
-    signInWithGoogle,
-    signOut,
-  } = useClub()
+  const { code, uid, displayName, ready, state } = useClub()
   const navigate = useNavigate()
-  const [authBusy, setAuthBusy] = useState(false)
 
   if (!code) {
     return (
@@ -53,86 +28,7 @@ function ClubGate() {
     )
   }
 
-  async function handleGoogle() {
-    setError(null)
-    setAuthBusy(true)
-    try {
-      await signInWithGoogle()
-    } catch (err) {
-      setError(friendlyFirebaseError(err))
-    } finally {
-      setAuthBusy(false)
-    }
-  }
-
-  async function handleSignOut() {
-    await signOut()
-    navigate('/')
-  }
-
-  if (!ready) {
-    return (
-      <Page>
-        <LoadingState label="Getting you in…" />
-      </Page>
-    )
-  }
-
-  if (!uid) {
-    return (
-      <Page>
-        <header className="flex flex-col gap-3">
-          <div>
-            <Brand />
-            <h1 className="font-display text-3xl">Join this club</h1>
-          </div>
-          <AccentRule />
-        </header>
-        <ErrorBanner message={error} />
-        <GoogleSignInCard onSignIn={() => void handleGoogle()} busy={authBusy} />
-      </Page>
-    )
-  }
-
-  if (!displayName) {
-    return (
-      <Page>
-        <header className="flex flex-col gap-3">
-          <h1 className="font-display text-3xl">Join this club</h1>
-          <AccentRule />
-        </header>
-        <ErrorBanner message={error} />
-        <p className="text-sm text-ink/70">
-          Signed in with Google
-          {' · '}
-          <TextButton onClick={() => void handleSignOut()}>Sign out</TextButton>
-        </p>
-        <Card>
-          <NameForm
-            busyLabel="Join club"
-            defaultName={suggestedName ?? ''}
-            onSave={async (name) => {
-              await setDisplayName(name)
-            }}
-          />
-        </Card>
-      </Page>
-    )
-  }
-
-  if (!state) {
-    return (
-      <Page>
-        <LoadingState label="Loading club…" />
-        <ErrorBanner message={error} />
-        {error ? (
-          <Button variant="ghost" onClick={() => navigate('/clubs')}>
-            My clubs
-          </Button>
-        ) : null}
-      </Page>
-    )
-  }
+  if (!ready || !uid || !displayName || !state) return <ClubEntry />
 
   return <Outlet />
 }
@@ -165,7 +61,7 @@ function useClubSections(code: string): ClubSection[] {
 }
 
 export function ClubShell() {
-  const { code, displayName, state, signOut } = useClub()
+  const { code, uid, displayName, state, signOut } = useClub()
   const sections = useClubSections(code)
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -176,7 +72,7 @@ export function ClubShell() {
     mainRef.current?.scrollTo({ top: 0 })
   }, [pathname, code])
 
-  if (!displayName || !state) return null
+  if (!uid || !displayName || !state) return <ClubEntry />
 
   async function handleSignOut() {
     await signOut()

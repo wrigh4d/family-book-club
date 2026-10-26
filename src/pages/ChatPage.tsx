@@ -1,4 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ClubEntry } from '../components/ClubEntry'
 import { Button, ErrorBanner, TextInput } from '../components/ui'
 import {
   loadOlderMessages,
@@ -28,7 +29,7 @@ import type { QueryDocumentSnapshot } from 'firebase/firestore'
 
 export function ChatPage() {
   const { code, uid, displayName, state, error, setError } = useClub()
-  if (!uid || !displayName || !state || !code) return null
+  if (!uid || !displayName || !state || !code) return <ClubEntry />
   const memberName =
     state.members.find((member) => member.id === uid)?.displayName.trim() || displayName
   return (

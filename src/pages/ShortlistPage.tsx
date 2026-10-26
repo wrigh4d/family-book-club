@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
+import { ClubEntry } from '../components/ClubEntry'
 import { Nominate, Shortlist } from '../components/shortlistTools'
 import { Card, CardTitle, ErrorBanner } from '../components/ui'
 import { friendlyFirebaseError } from '../lib/errors'
@@ -28,7 +29,7 @@ export function ShortlistPage() {
     pruneShortlist(code, state).catch(() => undefined)
   }, [code, staleKey, state])
 
-  if (!uid || !displayName || !state) return null
+  if (!uid || !displayName || !state) return <ClubEntry />
 
   if (!resolveCurrentBook(state)) {
     return <Navigate to={`/club/${code}`} replace />

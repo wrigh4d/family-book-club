@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ClubEntry } from '../components/ClubEntry'
 import { ConcludePicker } from '../components/ConcludePicker'
 import { GenrePreferenceChips } from '../components/GenrePreferenceChips'
 import { CurrentBookCard } from '../components/CurrentBookCard'
@@ -37,7 +38,7 @@ export function ClubHome() {
   const { code, uid, displayName, state, error, setError } = useClub()
   const navigate = useNavigate()
 
-  if (!uid || !displayName || !state) return null
+  if (!uid || !displayName || !state) return <ClubEntry />
 
   const current = resolveCurrentBook(state)
   const owner = isOwner(state, uid)

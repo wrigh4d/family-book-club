@@ -1,6 +1,11 @@
 import { Capacitor } from '@capacitor/core'
 import { initializeApp } from 'firebase/app'
-import { getAuth, indexedDBLocalPersistence, initializeAuth } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  indexedDBLocalPersistence,
+  initializeAuth,
+} from 'firebase/auth'
 import {
   getFirestore,
   initializeFirestore,
@@ -29,8 +34,11 @@ function createDb() {
   }
 }
 
-// The store WebView does not keep the default auth session. The website uses getAuth.
+// The store WebView does not keep the default auth session. The website omits
+// popupRedirectResolver so startup does not open the auth iframe.
 export const auth = Capacitor.isNativePlatform()
   ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
-  : getAuth(app)
+  : initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+    })
 export const db = createDb()

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ClubEntry } from '../components/ClubEntry'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   availableShortlist,
@@ -40,7 +41,7 @@ export function Present() {
   const facts = useBookFacts(current)
   const voice = useMemo(() => (state ? clubVoice(state) : { comments: [], ratings: [] }), [state])
 
-  if (!uid || !displayName || !state) return null
+  if (!uid || !displayName || !state) return <ClubEntry />
   if (!current) return <Navigate to={`/club/${code}`} replace />
 
   const shortlist = availableShortlist(state)

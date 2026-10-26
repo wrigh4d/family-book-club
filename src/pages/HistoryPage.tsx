@@ -1,3 +1,4 @@
+import { ClubEntry } from '../components/ClubEntry'
 import { CommentSection } from '../components/CommentSection'
 import { Card, CardTitle, Cover, ErrorBanner } from '../components/ui'
 import { groupRatingLabel, isSameClubBook } from '../lib/bookStatus'
@@ -9,7 +10,7 @@ import type { HistoryBook, Member } from '../types'
 export function HistoryPage() {
   const { uid, displayName, state, error } = useClub()
 
-  if (!uid || !displayName || !state) return null
+  if (!uid || !displayName || !state) return <ClubEntry />
 
   // Full history rides on the club subscription (no second listener).
   const current = resolveCurrentBook(state)
