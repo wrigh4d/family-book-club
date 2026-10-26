@@ -1,6 +1,6 @@
 import {
   doc,
-  getDoc,
+  getDocFromServer,
   setDoc,
 } from 'firebase/firestore'
 import { type ClubState } from '../types'
@@ -24,7 +24,7 @@ export function assertOwner(state: ClubState, uid: string): void {
 
 export async function saveProfile(uid: string, displayName: string): Promise<void> {
   const ref = userRef(uid)
-  const snap = await getDoc(ref)
+  const snap = await getDocFromServer(ref)
   const payload: Record<string, unknown> = {
     displayName: displayName.trim(),
     updatedAt: Date.now(),

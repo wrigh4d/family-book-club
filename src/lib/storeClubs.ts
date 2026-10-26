@@ -3,6 +3,7 @@ import {
   collectionGroup,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
   onSnapshot,
   query,
@@ -126,7 +127,7 @@ async function collectDiscoveredClubCodes(uid: string): Promise<{ codes: string[
 }
 
 export async function discoverAndRememberClubs(uid: string): Promise<void> {
-  const userSnap = await getDoc(userRef(uid))
+  const userSnap = await getDocFromServer(userRef(uid))
   const data = userSnap.exists() ? dataOf(userSnap) : {}
   if (!needsClubIndex(data)) return
 
@@ -197,6 +198,7 @@ export function subscribeJoinedClubs(
   let generation = 0
   let cancelled = false
   let discovered = false
+  let sawServer = false
   let latest: ClubMembership[] = []
   let hydratedKey: string | null = null
 
@@ -223,8 +225,12 @@ export function subscribeJoinedClubs(
 
   const stop = onSnapshot(
     userRef(uid),
+    { includeMetadataChanges: true },
     (snap) => {
-      latest = parseUserClubs(snap.exists() ? dataOf(snap) : {})
+      const memberships = parseUserClubs(snap.exists() ? dataOf(snap) : {})
+      if (memberships.length === 0 && snap.metadata.fromCache) return
+      if (!snap.metadata.fromCache) sawServer = true
+      latest = memberships
       emit(latest)
     },
     (err) => onError(err),
@@ -239,6 +245,7 @@ export function subscribeJoinedClubs(
     .finally(() => {
       if (cancelled) return
       discovered = true
+      if (latest.length === 0 && !sawServer) return
       emit(latest)
     })
 

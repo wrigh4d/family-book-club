@@ -9,11 +9,15 @@ import {
   persistentMultipleTabManager,
 } from 'firebase/firestore'
 import { firebaseConfig } from './firebaseConfig'
+import { isIosDevice } from './pwa'
 
 export const app = initializeApp(firebaseConfig)
 
 function createDb() {
-  const canPersist = typeof window !== 'undefined' && typeof indexedDB !== 'undefined'
+  // iOS drops IndexedDB when the sign-in popup backgrounds the page, so the
+  // club list stays on a stale cache. Keep the persistent cache everywhere else.
+  const canPersist =
+    typeof window !== 'undefined' && typeof indexedDB !== 'undefined' && !isIosDevice()
   try {
     return initializeFirestore(app, {
       localCache: canPersist
